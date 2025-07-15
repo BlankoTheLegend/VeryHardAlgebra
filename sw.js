@@ -6,7 +6,8 @@ const FILES_TO_CACHE = [
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
-  '/sw.js'
+  '/sw.js',
+  '/Curtains.html'
 ];
 
 // On install: cache essential files
