@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VeryHardAlgebra PWA</title>
+
+  <!-- 📱 Mobile scaling for responsiveness -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- 📦 PWA Metadata -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+
+  <!-- 💄 Fullscreen adaptive styling -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    iframe {
+      width: 100vw;
+      height: 100vh;
+      border: none;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <iframe id="content-frame" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
+
+  <!-- 🚀 Dynamic content loader with offline fallback -->
+  <script>
+    const RAW_URL = 'https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/Curtains.html';
+    const STORAGE_KEY = 'cachedHtmlContent';
+    const iframe = document.getElementById('content-frame');
+
+    async function loadFromRemote() {
+      try {
+        const response = await fetch(RAW_URL);
+        if (!response.ok) throw new Error('Fetch failed');
+
+        const html = await response.text();
+        localStorage.setItem(STORAGE_KEY, html);
+        iframe.srcdoc = html;
+        console.log('✅ Loaded latest content from GitHub');
+      } catch (err) {
+        console.warn('⚠️ Failed to load remote content. Falling back to cached version.');
+        loadFromCache();
+      }
+    }
+
+    function loadFromCache() {
+      const cached = localStorage.getItem(STORAGE_KEY);
+      if (cached) {
+        iframe.srcdoc = cached;
+        console.log('✅ Loaded content from localStorage cache');
+      } else {
+        document.body.innerHTML = '<h2 style="text-align:center;margin-top:20%">Unable to load content.<br>Please connect to the internet at least once.</h2>';
+      }
+    }
+
+    loadFromRemote();
+  </script>
+
+  <!-- 🛡️ Register service worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(() => console.log('🛡️ Service worker registered'))
+        .catch(err => console.error('❌ Service worker registration failed:', err));
+    }
+  </script>
+</body>
+</html>
