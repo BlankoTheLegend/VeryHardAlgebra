@@ -1,0 +1,3617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1.0" name="viewport"/>
+<title>HTML OS</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="My App">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/dracula.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/material.min.css">
+
+<style>
+        /* Base styles - unchanged from previous version */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* Default background */
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            padding-bottom: constant(safe-area-inset-bottom);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: constant(safe-area-inset-left);
+            padding-left: env(safe-area-inset-left);
+            padding-right: constant(safe-area-inset-right);
+            padding-right: env(safe-area-inset-right);
+            /* Customization properties */
+            color: var(--text-color, white); /* Default text color */
+        }
+
+        .desktop {
+            position: relative;
+            height: calc(100vh - 50px - env(safe-area-inset-bottom));
+            width: calc(100% - env(safe-area-inset-left) - env(safe-area-inset-right));
+            top: env(safe-area-inset-top);
+            background: var(--desktop-background, url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>')); /* Default desktop background */
+            background-size: cover;
+            background-position: center;
+        }
+
+        .taskbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: var(--taskbar-height, 50px);
+            background: var(--taskbar-color, rgba(0, 0, 0, 0.8)); /* Default taskbar color */
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            z-index: 10000;
+            bottom: env(safe-area-inset-bottom);
+            padding-left: calc(10px + env(safe-area-inset-left));
+            padding-right: calc(10px + env(safe-area-inset-right));
+            width: 100vw;
+            border-top: 1px solid var(--window-border-color, rgba(255, 255, 255, 0.2)); /* Taskbar border based on window border */
+        }
+
+        /* Taskbar position changes */
+        .taskbar.top {
+            top: 0;
+            bottom: unset;
+            border-top: none;
+            border-bottom: 1px solid var(--window-border-color, rgba(255, 255, 255, 0.2));
+            height: var(--taskbar-height, 50px); /* Ensure height is set */
+        }
+
+        .taskbar.left, .taskbar.right {
+            top: 0; /* Align to top when vertical */
+            bottom: 0;
+            width: var(--taskbar-height, 50px); /* Use height as width for vertical */
+            height: 100vh;
+            flex-direction: column;
+            padding: 10px 0; /* Adjust padding for vertical */
+            border-top: none;
+            border-bottom: none;
+        }
+        
+        .taskbar.left {
+            left: 0;
+            right: unset;
+            border-right: 1px solid var(--window-border-color, rgba(255, 255, 255, 0.2));
+            padding-top: calc(10px + env(safe-area-inset-top));
+            padding-bottom: calc(10px + env(safe-area-inset-bottom));
+        }
+
+        .taskbar.right {
+            right: 0;
+            left: unset;
+            border-left: 1px solid var(--window-border-color, rgba(255, 255, 255, 0.2));
+            padding-top: calc(10px + env(safe-area-inset-top));
+            padding-bottom: calc(10px + env(safe-area-inset-bottom));
+        }
+
+        /* Adjust desktop size based on taskbar position */
+        body:has(.taskbar.top) .desktop {
+            height: calc(100vh - var(--taskbar-height, 50px) - env(safe-area-inset-bottom));
+            top: var(--taskbar-height, 50px) + env(safe-area-inset-top);
+        }
+        body:has(.taskbar.left) .desktop {
+            width: calc(100vw - var(--taskbar-height, 50px) - env(safe-area-inset-right));
+            left: var(--taskbar-height, 50px) + env(safe-area-inset-left);
+            height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)); /* Full height minus insets */
+            top: env(safe-area-inset-top);
+        }
+        body:has(.taskbar.right) .desktop {
+            width: calc(100vw - var(--taskbar-height, 50px) - env(safe-area-inset-left));
+            right: var(--taskbar-height, 50px) + env(safe-area-inset-right);
+            left: unset;
+            height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)); /* Full height minus insets */
+            top: env(safe-area-inset-top);
+        }
+
+
+        .start-menu {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 8px 15px;
+            color: var(--text-color, white);
+            cursor: pointer;
+            margin-right: 10px;
+            transition: background 0.3s;
+        }
+        .taskbar.left .start-menu, .taskbar.right .start-menu {
+            margin-right: 0; /* Reset horizontal margin */
+            margin-bottom: 10px; /* Add vertical margin */
+        }
+
+
+        .start-menu:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .taskbar-apps {
+            display: flex;
+            gap: 5px;
+            flex: 1;
+        }
+        .taskbar.left .taskbar-apps, .taskbar.right .taskbar-apps {
+            flex-direction: column;
+            gap: 5px;
+            width: 100%; /* Ensure they take full width in vertical taskbar */
+        }
+
+        .taskbar-app {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text-color, white);
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .taskbar-app:hover,
+        .taskbar-app.active {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Taskbar icon sizes */
+        .taskbar-app .taskbar-icon {
+            font-size: var(--taskbar-icon-size, 16px);
+        }
+        .taskbar-app .taskbar-label {
+             font-size: var(--taskbar-label-font-size, 12px);
+        }
+
+        .desktop-icon {
+            position: absolute;
+            width: 80px;
+            height: 90px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 88px;
+            transition: background 0.3s;
+            color: var(--text-color, white);
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .desktop-icon:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .desktop-icon .icon {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+
+        .desktop-icon .label {
+            font-size: 12px;
+            text-align: center;
+            word-wrap: break-word;
+        }
+
+        .window {
+            position: absolute;
+            background: var(--window-bg, white); /* Default window background */
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            min-width: 400px;
+            min-height: 300px;
+            z-index: 1000;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+            max-width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right));
+            max-height: calc(100vh - 50px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+            border: 1px solid var(--window-border-color, #ccc); /* Default window border */
+        }
+
+        .window.minimized {
+            transform: scale(0.1);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .window.maximized {
+            top: env(safe-area-inset-top) !important;
+            left: env(safe-area-inset-left) !important;
+            width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
+            height: calc(100vh - 50px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+            border-radius: 0;
+        }
+
+        .window-titlebar {
+            background: var(--titlebar-color, linear-gradient(135deg, #4CAF50, #45a049)); /* Default titlebar color */
+            color: var(--titlebar-text-color, white); /* Default titlebar text color */
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+        }
+
+        .window-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 5px;
+        }
+
+        .window-control {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+            transition: background 0.2s;
+        }
+
+        .window-control.minimize {
+            background: #ffbd2e;
+        }
+
+        .window-control.maximize {
+            background: #28ca42;
+        }
+
+        .window-control.close {
+            background: #ff5f56;
+        }
+
+        .window-control:active {
+            filter: brightness(85%);
+        }
+
+        .window-content {
+            height: calc(100% - 50px);
+            overflow: auto;
+            background: var(--window-content-bg, white); /* Default window content background */
+            color: var(--window-content-text-color, #333); /* Default window content text color */
+        }
+
+        .app-store, .file-explorer, .html-editor, .settings-app, .task-manager, .cmd-app, .calculator-app, .notepad-app, .python-app {
+            padding: 20px;
+            height: 100%; /* Ensure app content fills window */
+            box-sizing: border-box; /* Include padding in height */
+        }
+
+        .app-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .app-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f9f9f9;
+            transition: transform 0.2s;
+            color: #333; /* Ensure readability */
+        }
+
+        .app-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .app-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .app-emoji {
+            font-size: 24px;
+        }
+
+        .app-name {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .app-description {
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .install-btn, .toolbar-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .install-btn:hover, .toolbar-btn:hover {
+            background: #45a049;
+        }
+
+        .install-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .file-toolbar, .editor-toolbar, .task-manager-toolbar, .notepad-toolbar, .python-toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+            flex-wrap: wrap; /* Allow wrapping for smaller screens */
+        }
+
+        .file-path {
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: var(--window-content-text-color, #333);
+        }
+
+        .file-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* Adjusted for better spacing */
+            gap: 15px;
+        }
+
+        .file-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f9f9f9;
+            cursor: pointer;
+            transition: background 0.3s;
+            color: #333; /* Ensure readability */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            word-break: break-all; /* Prevent long names from breaking layout */
+        }
+
+        .file-item:hover {
+            background: #e9e9e9;
+        }
+
+        .file-icon {
+            font-size: 32px; /* Increased icon size for better visibility */
+            margin-bottom: 8px;
+        }
+
+        .file-name {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .file-meta {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .html-editor {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-input {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* CodeMirror specific styling within the editor */
+        .CodeMirror {
+            flex-grow: 1; /* CodeMirror editor takes available space */
+            height: auto; /* Important for flexbox to work */
+            font-size: 14px; /* Adjusted for better fit in window */
+            line-height: 1.5;
+            border: 1px solid #ddd; /* Match existing textarea border */
+            border-radius: 6px;
+            overflow: hidden; /* Ensure content stays within rounded corners */
+            background-color: #282a36; /* Dracula background */
+            color: #f8f8f2; /* Dracula foreground */
+        }
+        
+        .CodeMirror-scroll {
+            padding: 15px; /* Match textarea padding */
+        }
+
+        .preview-frame {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 20000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 400px;
+            width: 90%;
+            color: #333; /* Ensure readability */
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #333; /* Ensure readability */
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .modal-btn.primary {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .modal-btn.secondary {
+            background: #ccc;
+            color: #333;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #f44336;
+        }
+
+        /* Settings App (formerly Customization App) specific styles */
+        .settings-option {
+            margin-bottom: 15px;
+        }
+
+        .settings-option label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--window-content-text-color, #333);
+        }
+
+        .settings-option input[type="color"],
+        .settings-option input[type="file"],
+        .settings-option select,
+        .settings-option input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background-color: var(--window-content-bg, white); /* Ensure input background matches window content */
+            color: var(--window-content-text-color, #333);
+        }
+        
+        .settings-option input[type="file"] {
+            padding: 5px; /* Adjust padding for file input */
+        }
+        
+        .settings-option button {
+            margin-top: 10px;
+            display: block;
+        }
+
+        /* Task Manager Specific Styles */
+        .task-manager-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 15px;
+        }
+        .task-manager-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            color: #333;
+        }
+        .task-manager-item:last-child {
+            border-bottom: none;
+        }
+        .task-manager-item button {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .task-manager-item button:hover {
+            background: #d32f2f;
+        }
+        .start-new-task-form {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        /* Cmd App Specific Styles */
+        .cmd-app {
+            background-color: black;
+            color: #00ff00; /* Green text */
+            font-family: 'Consolas', 'Monaco', monospace;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        #cmd-output {
+            flex-grow: 1;
+            padding: 10px;
+            overflow-y: auto;
+            white-space: pre-wrap; /* Preserve whitespace and wrap text */
+        }
+        #cmd-input {
+            background-color: #333;
+            color: #00ff00;
+            border: none;
+            border-top: 1px solid #555;
+            padding: 10px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            outline: none;
+            width: 100%; /* Take full width */
+            box-sizing: border-box; /* Include padding in width */
+        }
+        .cmd-prompt {
+            color: #00ffff; /* Cyan for prompt */
+            font-weight: bold;
+        }
+        .cmd-error {
+            color: #ff0000; /* Red for errors */
+        }
+
+        /* Calculator App Specific Styles */
+        .calculator-app {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: var(--window-content-bg, #f0f0f0);
+            color: var(--window-content-text-color, #333);
+        }
+        #calculator-display {
+            background-color: var(--window-bg, #eee);
+            border: 1px solid #ccc;
+            padding: 15px;
+            font-size: 2.5em;
+            text-align: right;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+            overflow-x: auto;
+            color: var(--window-content-text-color, #333);
+        }
+        .calculator-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            width: 90%;
+            max-width: 400px;
+        }
+        .calculator-buttons button {
+            padding: 15px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background-color: #e0e0e0;
+            transition: background-color 0.2s, transform 0.1s;
+            color: #333;
+        }
+        .calculator-buttons button:hover {
+            background-color: #d0d0d0;
+        }
+        .calculator-buttons button:active {
+            transform: translateY(1px);
+        }
+        .calculator-buttons button.operator {
+            background-color: #ff9800;
+            color: white;
+        }
+        .calculator-buttons button.operator:hover {
+            background-color: #fb8c00;
+        }
+        .calculator-buttons button.equals {
+            background-color: #4CAF50;
+            color: white;
+            grid-column: span 2;
+        }
+        .calculator-buttons button.equals:hover {
+            background-color: #43a047;
+        }
+        .calculator-buttons button.clear {
+            background-color: #f44336;
+            color: white;
+        }
+        .calculator-buttons button.clear:hover {
+            background-color: #d32f2f;
+        }
+
+        /* Notepad Specific Styles */
+        .notepad-app {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .notepad-toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+            flex-wrap: wrap;
+        }
+        .notepad-toolbar select {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background-color: var(--window-content-bg, white);
+            color: var(--window-content-text-color, #333);
+        }
+        .notepad-editor-container {
+            flex: 1; /* Takes all remaining vertical space */
+            display: flex;
+            flex-direction: column;
+        }
+        /* Ensure the CodeMirror container fills its parent */
+        #notepad-editor-main-container {
+            flex-grow: 1; /* Allows it to grow and fill available space */
+            height: 100%; /* Explicitly make it fill parent */
+        }
+        /* Ensure CodeMirror itself fills its direct parent (the main container) */
+        .notepad-editor-container .CodeMirror {
+            height: 100%; /* Make CodeMirror fill its container */
+        }
+
+        /* Sexy UI mode example */
+        .notepad-app.sexy-ui .CodeMirror {
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(145deg, #2a2c37, #363a49);
+            color: #a9b7c6;
+            font-family: 'Fira Code', 'Cascadia Code', monospace;
+            font-weight: 500;
+        }
+        .notepad-app.sexy-ui .CodeMirror-gutters {
+            background-color: #2a2c37;
+            border-right: 1px solid #444;
+        }
+        .notepad-app.sexy-ui .CodeMirror-activeline-background {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .notepad-app.sexy-ui .CodeMirror-linenumber {
+            color: #667eea;
+        }
+        
+        /* Context Menu Styles */
+        .context-menu {
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 5px 0;
+            z-index: 20001; /* Ensure it's on top */
+        }
+
+        .context-menu-item {
+            padding: 8px 15px;
+            cursor: pointer;
+            color: #333;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .context-menu-item:hover {
+            background: #f0f0f0;
+        }
+
+        /* Python Output in Notepad */
+        #notepad-python-output {
+            background-color: #1a1a1a;
+            color: #00ff00;
+            padding: 10px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            border-radius: 6px;
+            height: 150px; /* Fixed height for output */
+            border: 1px solid #555;
+            box-sizing: border-box;
+            margin-top: 10px; /* Space between editor and output */
+        }
+
+    </style>
+</head>
+<body>
+<div class="desktop" id="desktop">
+</div>
+<div class="taskbar" id="taskbar">
+<div class="start-menu" onclick="showStartMenu()">
+            🏠 Start
+        </div>
+<div class="taskbar-apps" id="taskbar-apps">
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/markdown/markdown.min.js"></script>
+<!-- Pyodide CDN -->
+<script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+      .then(() => console.log('Service Worker registered'));
+  }
+</script>
+<script>
+
+function openFileInNotepad(filePath) {
+    if (!filePath || !OS.files.has(filePath)) {
+        showAlert('Error', 'File not found.');
+        return;
+    }
+
+    const fileData = OS.files.get(filePath);
+    if (fileData && fileData.content !== undefined) {
+        // Determine mode based on file extension for syntax highlighting
+        const fileName = filePath.split('/').pop();
+        const mode = getCodeMirrorModeForFile(fileName);
+        
+        initializeNotepadEditor(fileData.content, mode);
+        currentNotepadFileName = filePath;
+
+        // Update window title to reflect the opened file
+        const notepadWindow = document.querySelector('.notepad-app').closest('.window');
+        if (notepadWindow) {
+            const titleSpan = notepadWindow.querySelector('.window-title span:last-child');
+            if (titleSpan) titleSpan.textContent = `📝 ${fileData.name}`;
+        }
+    } else {
+        showAlert('Error', 'Could not load file content.');
+    }
+}
+
+function editFileCmd(filePath) {
+    const fileData = OS.files.get(filePath);
+    if (!fileData || typeof fileData.content === 'undefined') {
+        updateCmdOutput(`edit: Error opening file: ${filePath}`, true);
+        return;
+    }
+
+    showPrompt(`Editing: ${fileData.name}`, 'Enter new file contents:', fileData.content, (newContent) => {
+        if (newContent !== null) {
+            fileData.content = newContent;
+            fileData.modified = Date.now();
+            saveFiles();
+            updateCmdOutput(`File updated: ${fileData.name}`);
+        }
+    });
+}
+
+        // Global state management
+        const OS = {
+            windows: new Map(),
+            runningApps: new Map(), // Changed to map windowId to appData
+            installedApps: new Map(),
+            // Files now store full paths as keys, e.g., '/documents/my_notes.txt'
+            files: new Map(), 
+            settings: {
+                textColor: 'white',
+                desktopBackground: '', // Can be a color or URL
+                windowBorderColor: '#ccc',
+                taskbarColor: 'rgba(0, 0, 0, 0.8)',
+                titlebarColor: 'linear-gradient(135deg, #4CAF50, #45a049)',
+                titlebarTextColor: 'white',
+                windowBg: 'white',
+                windowContentBg: 'white',
+                windowContentTextColor: '#333',
+                // New settings for Taskbar Advancements
+                taskbarPosition: 'bottom', // 'top', 'bottom', 'left', 'right'
+                taskbarIconSize: '16px', // CSS font-size value for taskbar app icon
+                taskbarLabelFontSize: '12px', // CSS font-size value for taskbar app label
+                taskbarHeight: '50px', // CSS height value for taskbar
+                taskbarAutoHide: false,
+                // New settings for Startup Apps
+                startupApps: [], // Array of app IDs to launch on boot
+                // New settings for Developer Mode
+                developerMode: {
+                    enableConsoleLogging: false,
+                    showHiddenFiles: false, // For File Explorer
+                    showPerformanceOverlay: false
+                },
+                // New settings for Keyboard Mode
+                keyboardMode: 'default', // e.g., 'default', 'vim', 'emacs' - conceptual
+                // New settings for Notepad
+                notepadTheme: 'dracula',
+                notepadMode: 'htmlmixed',
+                notepadSexyUI: false,
+                osVersion: "4.0" // Current OS version for migration checks
+            },
+            nextWindowId: 1,
+            nextZIndex: 1000,
+            draggedWindow: null,
+            dragOffset: { x: 0, y: 0 },
+            currentDirectory: '/' // For Cmd app
+        };
+
+        // Global variable to hold the current CodeMirror instance for Notepad
+        let currentCodeMirrorEditor = null;
+        let currentNotepadFileName = null; // To keep track of the file open in Notepad/HTML Editor
+
+        // Global variable for Pyodide instance (remains global)
+        let pyodide = null;
+        let pyodidePromise = null; // To ensure pyodide loads only once
+
+        // Define a set of default system apps for fallback
+        const defaultSystemApps = [
+            {
+                name: "App Store",
+                emoji: "🛍️",
+                description: "Browse and install new applications.",
+                htmlContent: "",
+                htmlUrl: "",
+                type: "system"
+            },
+            {
+                name: "File Explorer",
+                emoji: "📁",
+                description: "Manage your files and folders.",
+                htmlContent: "",
+                htmlUrl: "",
+                type: "system"
+            },
+            {
+                name: "Notepad",
+                emoji: "📝",
+                description: "Simple text editor with syntax highlighting and Python support.",
+                htmlContent: "",
+                htmlUrl: "",
+                type: "system"
+            },
+            {
+                name: "Command Prompt",
+                emoji: "💻",
+                description: "Access the command-line interface.",
+                htmlContent: "",
+                htmlUrl: "",
+                type: "system"
+            },
+            {
+                name: "Calculator",
+                emoji: "🔢",
+                description: "A basic calculator for everyday use.",
+                htmlContent: "",
+                htmlUrl: "",
+                type: "system"
+            },
+            {
+                name: "Settings",
+                emoji: "⚙️",
+                description: "Customize your OS appearance and behavior.",
+                htmlContent: "",
+                htmlUrl: "",
+                type: "system"
+            },
+            {
+                name: "Task Manager",
+                emoji: "📊",
+                description: "Monitor and manage running applications.",
+                htmlContent: "",
+                htmlUrl: "",
+                type: "system"
+            },
+            {
+                name: "Python IDE",
+                emoji: "🐍",
+                description: "Integrated development environment for Python.",
+                htmlContent: "print('Hello, Python!')\n# Write your Python code here.\n# Use pip install <package_name> in CMD to install packages.",
+                htmlUrl: "",
+                type: "system"
+            }
+        ];
+
+
+        // Function to get safe area insets (fallback for older browsers)
+        function getSafeAreaInsets() {
+            const bodyStyle = getComputedStyle(document.body);
+            return {
+                top: parseFloat(bodyStyle.getPropertyValue('padding-top')) || 0,
+                right: parseFloat(bodyStyle.getPropertyValue('padding-right')) || 0,
+                bottom: parseFloat(bodyStyle.getPropertyValue('padding-bottom')) || 0,
+                left: parseFloat(bodyStyle.getPropertyValue('padding-left')) || 0
+            };
+        }
+
+        // Helper to normalize paths (e.g., remove double slashes, ensure leading slash)
+        function normalizePath(path) {
+            let normalized = path.replace(/\/\/+/g, '/'); // Replace multiple slashes with single
+            if (!normalized.startsWith('/')) {
+                normalized = '/' + normalized; // Ensure leading slash
+            }
+            // Remove trailing slash unless it's just the root
+            if (normalized.length > 1 && normalized.endsWith('/')) {
+                normalized = normalized.slice(0, -1);
+            }
+            return normalized;
+        }
+
+        // Initialize the OS
+        function initOS() {
+            // --- Startup Version Check ---
+            const storedOSVersion = localStorage.getItem('htmlos-version');
+            const currentHardcodedVersion = OS.settings.osVersion;
+
+            if (storedOSVersion && storedOSVersion !== currentHardcodedVersion) {
+                showConfirm(`HTML OS has been updated to version ${currentHardcodedVersion}. Your saved apps and files from version ${storedOSVersion} might be incompatible or cause issues. Would you like to clear all stored data and start fresh? (Selecting 'Cancel' will keep your data, but issues might occur.)`, (confirmed) => {
+                    if (confirmed) {
+                        localStorage.removeItem('htmlos-apps');
+                        localStorage.removeItem('htmlos-files');
+                        localStorage.removeItem('htmlos-settings'); // Clear all settings too
+                        localStorage.setItem('htmlos-version', currentHardcodedVersion); // Set new version after clearing
+                        showAlert('Data Cleared', 'All stored data has been cleared. The OS will now restart.', () => {
+                            location.reload(); // Reload the page to apply changes
+                        });
+                    } else {
+                        localStorage.setItem('htmlos-version', currentHardcodedVersion); // Update version anyway to avoid repeated prompts
+                        showAlert('Data Retained', 'Your data has been kept. If you experience issues, consider clearing data via Settings -> Reset to Defaults.');
+                        finishOSInitialization(); // Continue with normal init if user cancels clear
+                    }
+                });
+            } else {
+                localStorage.setItem('htmlos-version', currentHardcodedVersion); // Set current version if first run or matching
+                finishOSInitialization();
+            }
+        }
+
+        // Separate function for the rest of OS initialization
+        async function finishOSInitialization() {
+            loadSettings(); // Load settings (will be default if cleared)
+            applySettings(); // Apply settings to CSS variables
+            loadInstalledApps(); // Load locally installed apps
+            loadFiles(); // Load files after apps
+            
+            // Fallback: If no apps are installed after loading from storage, install default apps
+            if (OS.installedApps.size === 0) {
+                console.log("No apps found after loading. Installing default system apps.");
+                defaultSystemApps.forEach(app => {
+                    const appId = generateAppId(app.name);
+                    OS.installedApps.set(appId, { ...app, id: appId });
+                });
+                saveInstalledApps();
+                showAlert('Default Apps Installed', 'System applications have been installed.');
+            }
+
+            updateDesktopIcons();
+            
+            // Add event listeners for both mouse and touch
+            document.addEventListener('mousedown', handleGlobalMouseDown);
+            document.addEventListener('mousemove', handleGlobalMouseMove);
+            document.addEventListener('mouseup', handleGlobalMouseUp);
+
+            document.addEventListener('touchstart', handleGlobalTouchStart, { passive: false });
+            document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
+            document.addEventListener('touchend', handleGlobalTouchEnd);
+
+            // Launch startup apps
+            OS.settings.startupApps.forEach(appId => {
+                if (OS.installedApps.has(appId)) {
+                    launchApp(appId);
+                }
+            });
+        }
+
+        // Storage functions (removed try...catch blocks as requested)
+        function saveInstalledApps() {
+            localStorage.setItem('htmlos-apps', JSON.stringify(Array.from(OS.installedApps.entries())));
+        }
+
+        function loadInstalledApps() {
+            const saved = localStorage.getItem('htmlos-apps');
+            if (saved) {
+                const apps = JSON.parse(saved);
+                OS.installedApps = new Map(apps);
+            }
+        }
+
+        function saveFiles() {
+            localStorage.setItem('htmlos-files', JSON.stringify(Array.from(OS.files.entries())));
+        }
+
+        function loadFiles() {
+            const saved = localStorage.getItem('htmlos-files');
+            if (saved) {
+                const files = JSON.parse(saved);
+                OS.files = new Map(files);
+                // Ensure files have 'type' property and normalize paths on load
+                const normalizedFiles = new Map();
+                OS.files.forEach((file, path) => {
+                    const normalizedPath = normalizePath(path);
+                    let isImplicitFolder = false;
+                    OS.files.forEach((otherFile, otherPath) => {
+                        if (otherPath.startsWith(normalizedPath + '/') && otherPath !== normalizedPath) {
+                            isImplicitFolder = true;
+                        }
+                    });
+                    file.type = file.type || (isImplicitFolder ? 'folder' : 'file'); 
+                    normalizedFiles.set(normalizedPath, file);
+                });
+                OS.files = normalizedFiles;
+            }
+        }
+        
+        function saveSettings() {
+            localStorage.setItem('htmlos-settings', JSON.stringify(OS.settings));
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('htmlos-settings');
+            if (saved) {
+                const loadedSettings = JSON.parse(saved);
+                // Deep merge for nested objects like developerMode
+                OS.settings = { 
+                    ...OS.settings, 
+                    ...loadedSettings,
+                    developerMode: { ...OS.settings.developerMode, ...loadedSettings.developerMode }
+                };
+            }
+        }
+
+        // Apply settings to CSS custom properties and DOM elements
+        function applySettings() {
+            const root = document.documentElement;
+            root.style.setProperty('--text-color', OS.settings.textColor);
+            root.style.setProperty('--desktop-background', OS.settings.desktopBackground || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)');
+            root.style.setProperty('--window-border-color', OS.settings.windowBorderColor);
+            root.style.setProperty('--taskbar-color', OS.settings.taskbarColor);
+            root.style.setProperty('--titlebar-color', OS.settings.titlebarColor);
+            root.style.setProperty('--titlebar-text-color', OS.settings.titlebarTextColor);
+            root.style.setProperty('--window-bg', OS.settings.windowBg);
+            root.style.setProperty('--window-content-bg', OS.settings.windowContentBg);
+            root.style.setProperty('--window-content-text-color', OS.settings.windowContentTextColor);
+
+            // Apply new taskbar settings
+            const taskbar = document.getElementById('taskbar');
+            if (taskbar) {
+                taskbar.className = 'taskbar'; // Reset classes
+                taskbar.classList.add(OS.settings.taskbarPosition);
+                root.style.setProperty('--taskbar-height', OS.settings.taskbarHeight);
+                root.style.setProperty('--taskbar-icon-size', OS.settings.taskbarIconSize);
+                root.style.setProperty('--taskbar-label-font-size', OS.settings.taskbarLabelFontSize);
+                
+                // Auto-hide taskbar (simple version - requires more CSS for smooth animation)
+                if (OS.settings.taskbarAutoHide) {
+                    // This is a basic toggle. Full auto-hide needs more complex CSS transitions
+                    // and potentially JS event listeners for hover.
+                    // For now, it will simply set display none/flex or hide/show on hover via CSS classes.
+                    // For a basic demo, we might just toggle a class that sets opacity/transform.
+                }
+            }
+
+            // Developer mode console logging
+            if (OS.settings.developerMode.enableConsoleLogging) {
+                console.log('Developer mode console logging enabled.');
+            } else {
+                // In a real scenario, you'd disable/re-enable logging
+            }
+        }
+
+        // Desktop icon management
+        function updateDesktopIcons() {
+            const desktop = document.getElementById('desktop');
+            const existingIcons = desktop.querySelectorAll('.desktop-icon');
+            existingIcons.forEach(icon => icon.remove());
+
+            const insets = getSafeAreaInsets();
+            let x = 20 + insets.left;
+            let y = 20 + insets.top;
+
+            const iconWidth = 100, iconHeight = 110;
+            
+            // Adjust max X/Y based on taskbar position
+            let maxX = window.innerWidth - iconWidth - insets.right;
+            let maxY = window.innerHeight - iconHeight - 50 - insets.bottom; // Default bottom taskbar
+            const taskbarHeightVal = parseFloat(OS.settings.taskbarHeight);
+
+            if (OS.settings.taskbarPosition === 'bottom') {
+                maxY -= taskbarHeightVal;
+            } else if (OS.settings.taskbarPosition === 'top') {
+                minY += taskbarHeightVal;
+            } else if (OS.settings.taskbarPosition === 'left' || OS.settings.taskbarPosition === 'right') {
+                maxX = window.innerWidth - iconWidth - taskbarHeightVal - insets.right;
+                if (OS.settings.taskbarPosition === 'left') {
+                    x = 20 + insets.left + taskbarHeightVal;
+                } else { // right
+                    x = 20 + insets.left; // Start from left, but shift if space is limited
+                    // This logic might need refinement for dynamic icon placement around vertical taskbar
+                }
+                maxY = window.innerHeight - iconHeight - insets.bottom; // Full height for icons
+            }
+
+
+            OS.installedApps.forEach((app, id) => {
+                const icon = document.createElement('div');
+                icon.className = 'desktop-icon';
+                icon.style.left = x + 'px';
+                icon.style.top = y + 'px';
+                icon.onclick = () => launchApp(id);
+
+                icon.innerHTML = `
+                    <div class="icon">${app.emoji}</div>
+                    <div class="label">${app.name}</div>
+                `;
+
+                desktop.appendChild(icon);
+
+                // Column-major ordering
+                y += iconHeight;
+                if (y + iconHeight > maxY) {
+                    y = 20 + insets.top;
+                    x += iconWidth;
+                }
+                if (x + iconWidth > maxX) {
+                    // Out of space, stop adding icons
+                    return; 
+                }
+            });
+        }
+
+        // App launching
+        function launchApp(appId, options = {}) {
+            let app = OS.installedApps.get(appId);
+            if (!app) return;
+
+            // Handle Python IDE launch by redirecting to Notepad in Python mode
+            if (appId === 'python-ide') {
+                console.log(`Launching Python IDE. Opening in Notepad Python mode.`);
+                
+                const initialPythonCode = app.htmlContent || 'print("Hello, Python!")\n# Write your Python code here.\n# Use pip install <package_name> in CMD to install packages.';
+
+                const launchOptions = {
+                    filePath: options.filePath, // Pass filePath if available
+                    newWindow: options.newWindow !== undefined ? options.newWindow : true, // Default to new window if not explicitly false
+                    startInPythonMode: true,
+                    originalAppName: app.name,
+                    originalAppEmoji: app.emoji
+                };
+                return launchApp('notepad', launchOptions); // Recursively call launchApp for notepad
+            }
+
+            // If not creating a new window, try to find an existing instance and focus it
+            if (!options.newWindow) {
+                let existingWindowId = null;
+                for (const [winId, appData] of OS.runningApps.entries()) {
+                    if (appData.appId === app.id) {
+                        existingWindowId = winId;
+                        break;
+                    }
+                }
+                if (existingWindowId) {
+                    focusWindow(existingWindowId);
+                    return;
+                }
+            }
+
+            const windowId = 'window-' + OS.nextWindowId++;
+            const window = createWindow(windowId, app.name, app.emoji);
+
+            const windowContentDiv = window.querySelector('.window-content');
+            windowContentDiv.innerHTML = '<div class="loading">Loading app...</div>';
+
+            let content = ''; 
+
+            if (app.id === 'app-store') {
+                content = createAppStoreContent();
+                windowContentDiv.innerHTML = content;
+                loadAppStoreData();
+            } else if (app.id === 'file-explorer') {
+                content = createFileExplorerContent();
+                windowContentDiv.innerHTML = content;
+                updateFileList();
+            } else if (app.id === 'settings') { 
+                content = createSettingsContent();
+                windowContentDiv.innerHTML = content;
+                loadSettingsForm();
+            } else if (app.id === 'task-manager') {
+                content = createTaskManagerContent();
+                windowContentDiv.innerHTML = content;
+                updateTaskManagerList();
+            } else if (app.id === 'command-prompt') { 
+                content = createCmdContent();
+                windowContentDiv.innerHTML = content;
+                // Increased timeout slightly for better DOM readiness
+                setTimeout(() => {
+                    console.log("CMD: Attempting to find cmd-input...");
+                    const cmdInput = document.getElementById('cmd-input');
+                    if (cmdInput) {
+                        console.log("CMD: cmd-input found. Focusing and adding listener.");
+                        cmdInput.focus(); 
+                        if (!cmdInput.dataset.listenerAdded) {
+                            cmdInput.addEventListener('keydown', handleCmdInput);
+                            cmdInput.dataset.listenerAdded = 'true';
+                        }
+                    } else {
+                        console.error("CMD: cmd-input NOT found!");
+                        showAlert("Error", "Command Prompt input area not found. Cannot initialize.");
+                    }
+                }, 50); 
+            } else if (app.id === 'calculator') {
+                content = createCalculatorContent();
+                windowContentDiv.innerHTML = content;
+            } else if (app.id === 'notepad') { 
+                content = createNotepadContent();
+                windowContentDiv.innerHTML = content;
+                const filePath = options.filePath || null;
+                currentNotepadFileName = filePath;
+                
+                // Pass startInPythonMode from options for correct Notepad initialization
+                const initialContent = options.initialPythonCode || (filePath ? OS.files.get(filePath).content : '');
+                const mode = options.startInPythonMode ? 'python' : (filePath ? getCodeMirrorModeForFile(filePath.split('/').pop()) : OS.settings.notepadMode);
+                
+                // Increased timeout slightly for better DOM readiness
+                setTimeout(() => {
+                    console.log("Notepad: Attempting to find notepad-editor-main-container...");
+                    const editorContainer = document.getElementById('notepad-editor-main-container');
+                    if (editorContainer) {
+                        console.log("Notepad: editorContainer found. Initializing editor.");
+                        // Pass options.startInPythonMode directly to initializeNotepadEditor
+                        initializeNotepadEditor(initialContent, mode, options.startInPythonMode);
+                        // Adjust window title for Python app redirection
+                        if (options.startInPythonMode) {
+                            const titleSpan = window.querySelector('.window-title span:last-child');
+                            if (titleSpan) titleSpan.textContent = `${options.originalAppEmoji || '🐍'} ${options.originalAppName || 'Python Editor'}`;
+                        } else if (filePath) {
+                            const titleSpan = window.querySelector('.window-title span:last-child');
+                            if (titleSpan) titleSpan.textContent = `${app.emoji} ${filePath.split('/').pop()}`;
+                        } else {
+                            const titleSpan = window.querySelector('.window-title span:last-child');
+                            if (titleSpan) titleSpan.textContent = `${app.emoji} Untitled`;
+                        }
+                    } else {
+                        console.error("Notepad: notepad-editor-main-container NOT found!");
+                        showAlert("Error", "Notepad editor area not found. Cannot initialize.");
+                    }
+                }, 50); 
+            }
+            else if (app.htmlUrl) {
+                const iframeId = `frame-${windowId}`;
+                content = `<iframe id="${iframeId}" style="width:100%;height:100%;border:none;"></iframe>`;
+                windowContentDiv.innerHTML = content;
+                
+                setTimeout(() => {
+                    fetch(app.htmlUrl)
+                        .then(res => res.text())
+                        .then(html => {
+                            const iframe = document.getElementById(iframeId);
+                            if (iframe) {
+                                iframe.srcdoc = html;
+                            }
+                        })
+                        .catch(error => {
+                            console.error(`Failed to load app from ${app.htmlUrl}:`, error);
+                            const iframe = document.getElementById(iframeId);
+                            if (iframe) {
+                                iframe.srcdoc = "<p style='padding:20px;color:red;'>Failed to fetch or render HTML content.</p>";
+                            }
+                        });
+                }, 100);
+            } else if (app.htmlContent) {
+                const iframeId = `frame-${windowId}`;
+                content = `<iframe id="${iframeId}" srcdoc="${app.htmlContent.replace(/"/g, '&quot;')}" style="width:100%;height:100%;border:none;"></iframe>`;
+                windowContentDiv.innerHTML = content;
+            } else {
+                content = '<div class="error">App content not available</div>';
+                windowContentDiv.innerHTML = content;
+                return;
+            }
+
+            // Register running app with windowId as key (use the potentially modified app object for runningApps)
+            OS.runningApps.set(windowId, {
+                windowId: windowId,
+                appId: app.id,
+                app: app,
+                blobUrl: null 
+            });
+
+            updateTaskbar();
+        }
+
+        // Window management
+        function createWindow(id, title, emoji) {
+            const windowElement = document.createElement('div'); // Renamed `window` to `windowElement` to avoid conflict with global `window` object
+            windowElement.className = 'window';
+            windowElement.id = id;
+            
+            // Set initial size to ensure min-width/height is met, and for calculation purposes later if needed
+            // These must be set *before* appending to body so offsetWidth/offsetHeight are accurate.
+            windowElement.style.width = '400px'; 
+            windowElement.style.height = '300px';
+
+            document.body.appendChild(windowElement); // Append to get accurate offsetWidth/Height
+
+            const desktop = document.getElementById('desktop');
+            const desktopRect = desktop.getBoundingClientRect();
+
+            // Calculate a cascading offset based on currently open windows
+            const cascadeStep = 20; // Pixels to offset each new window
+            const numOpenWindows = OS.windows.size; // Number of currently open windows
+            
+            // Ensure cascade range is positive, relative to desktop dimensions
+            const cascadeRangeX = Math.max(1, desktopRect.width - windowElement.offsetWidth - 20); // 20px buffer from edge
+            const cascadeRangeY = Math.max(1, desktopRect.height - windowElement.offsetHeight - 20); // 20px buffer from edge
+
+            const cascadeOffsetX = (numOpenWindows * cascadeStep) % cascadeRangeX;
+            const cascadeOffsetY = (numOpenWindows * cascadeStep) % cascadeRangeY;
+
+            // Initial position relative to the desktop's top-left corner
+            let initialX = desktopRect.left + 10 + cascadeOffsetX; // 10px padding from desktop edge + cascade
+            let initialY = desktopRect.top + 10 + cascadeOffsetY; // 10px padding from desktop edge + cascade
+
+            // Clamp positions to ensure window remains within desktop bounds
+            initialX = Math.min(initialX, desktopRect.right - windowElement.offsetWidth - 10); // Ensure window doesn't go off right edge
+            initialY = Math.min(initialY, desktopRect.bottom - windowElement.offsetHeight - 10); // Ensure window doesn't go off bottom edge
+
+            // Ensure we don't go below desktop.left/top (should already be covered by desktopRect.left/top + padding, but good for robustness)
+            initialX = Math.max(initialX, desktopRect.left + 10);
+            initialY = Math.max(initialY, desktopRect.top + 10);
+            
+            windowElement.style.left = initialX + 'px';
+            windowElement.style.top = initialY + 'px';
+            
+            windowElement.style.zIndex = ++OS.nextZIndex;
+
+            windowElement.innerHTML = `
+                <div class="window-titlebar" onmousedown="startDrag(event, '${id}')" ontouchstart="startDrag(event, '${id}')">
+                    <div class="window-title">
+                        <span>${emoji}</span>
+                        <span>${title}</span>
+                    </div>
+                    <div class="window-controls">
+                        <div class="window-control minimize" 
+                             onclick="event.stopPropagation(); minimizeWindow('${id}')" 
+                             ontouchend="event.stopPropagation(); minimizeWindow('${id}')">−</div>
+                        <div class="window-control maximize" 
+                             onclick="event.stopPropagation(); toggleMaximize('${id}')" 
+                             ontouchend="event.stopPropagation(); toggleMaximize('${id}')">□</div>
+                        <div class="window-control close" 
+                             onclick="event.stopPropagation(); closeWindow('${id}')" 
+                             ontouchend="event.stopPropagation(); closeWindow('${id}')">×</div>
+                    </div>
+                </div>
+                <div class="window-content"></div>
+            `;
+
+            // It's already appended to body. Now we can add it to our OS.windows map.
+            OS.windows.set(id, windowElement);
+            return windowElement;
+        }
+
+        function closeWindow(windowId) {
+            const window = OS.windows.get(windowId);
+            if (window) {
+                console.log(`Attempting to close window: ${windowId}. Current runningApps:`, Array.from(OS.runningApps.keys()));
+                window.remove();
+                OS.windows.delete(windowId);
+                
+                // Properly remove from runningApps using windowId
+                const appDataToClose = OS.runningApps.get(windowId);
+                if (appDataToClose) {
+                    if (appDataToClose.blobUrl) { // Check if it's actually a blob URL
+                        URL.revokeObjectURL(appDataToClose.blobUrl);
+                        console.log(`Revoked blob URL for ${appDataToClose.app.name}: ${appDataToClose.blobUrl}`);
+                    }
+                    OS.runningApps.delete(windowId); // Delete by windowId
+                    console.log(`Removed ${windowId} from runningApps. Remaining:`, Array.from(OS.runningApps.keys()));
+                } else {
+                    console.warn(`Attempted to close window ${windowId}, but it was not found in runningApps.`);
+                }
+                
+                updateTaskbar();
+                updateTaskManagerList(); // Ensure Task Manager is updated after closing a window
+            } else {
+                console.warn(`Attempted to close window ${windowId}, but it was not found in OS.windows.`);
+            }
+        }
+
+        function minimizeWindow(windowId) {
+            const window = OS.windows.get(windowId);
+            if (window) {
+                window.classList.add('minimized');
+                updateTaskbar();
+            }
+        }
+
+        function toggleMaximize(windowId) {
+            const window = OS.windows.get(windowId);
+            if (window) {
+                window.classList.toggle('maximized');
+            }
+        }
+
+        function focusWindow(windowId) {
+            const window = OS.windows.get(windowId);
+            if (window) {
+                window.classList.remove('minimized');
+                window.style.zIndex = ++OS.nextZIndex;
+                updateTaskbar();
+            }
+        }
+
+        // Drag functionality
+        function startDrag(event, windowId) {
+            if (event.target.closest('.window-control')) {
+                return;
+            }
+            event.preventDefault();
+            const window = OS.windows.get(windowId);
+            if (window && !window.classList.contains('maximized')) {
+                OS.draggedWindow = window;
+                const rect = window.getBoundingClientRect();
+
+                let clientX, clientY;
+                if (event.type === 'touchstart') {
+                    clientX = event.touches[0].clientX;
+                    clientY = event.touches[0].clientY;
+                } else {
+                    clientX = event.clientX;
+                    clientY = event.clientY;
+                }
+
+                OS.dragOffset = {
+                    x: clientX - rect.left,
+                    y: clientY - rect.top
+                };
+                window.style.zIndex = ++OS.nextZIndex;
+            }
+        }
+
+        function handleGlobalMouseDown(event) {
+            const window = event.target.closest('.window');
+            if (window) {
+                window.style.zIndex = ++OS.nextZIndex;
+            }
+        }
+
+        function handleGlobalMouseMove(event) {
+            if (OS.draggedWindow) {
+                const insets = getSafeAreaInsets();
+                let clientX, clientY;
+                if (event.type === 'touchmove') {
+                    clientX = event.touches[0].clientX;
+                    clientY = event.touches[0].clientY;
+                } else {
+                    clientX = event.clientX;
+                    clientY = event.clientY;
+                }
+                
+                let newX = clientX - OS.dragOffset.x;
+                let newY = clientY - OS.dragOffset.y;
+                
+                // Keep window within desktop bounds, considering taskbar position
+                const taskbarHeightVal = parseFloat(OS.settings.taskbarHeight);
+
+                let minX = insets.left;
+                let minY = insets.top;
+                let maxX = window.innerWidth - OS.draggedWindow.offsetWidth - insets.right;
+                let maxY = window.innerHeight - OS.draggedWindow.offsetHeight - insets.bottom;
+
+                if (OS.settings.taskbarPosition === 'bottom') {
+                    maxY -= taskbarHeightVal;
+                } else if (OS.settings.taskbarPosition === 'top') {
+                    minY += taskbarHeightVal;
+                } else if (OS.settings.taskbarPosition === 'left') {
+                    minX += taskbarHeightVal;
+                } else if (OS.settings.taskbarPosition === 'right') {
+                    maxX -= taskbarHeightVal;
+                }
+
+
+                newX = Math.max(minX, newX);
+                newX = Math.min(newX, maxX);
+
+                newY = Math.max(minY, newY);
+                newY = Math.min(newY, maxY);
+                
+                OS.draggedWindow.style.left = newX + 'px';
+                OS.draggedWindow.style.top = newY + 'px';
+            }
+        }
+
+        function handleGlobalMouseUp() {
+            OS.draggedWindow = null;
+        }
+
+        function handleGlobalTouchStart(event) {
+            const window = event.target.closest('.window');
+            if (window) {
+                window.style.zIndex = ++OS.nextZIndex;
+            }
+            if (event.target.closest('.window-titlebar')) {
+                const windowId = event.target.closest('.window').id;
+                startDrag(event, windowId);
+            }
+        }
+
+        function handleGlobalTouchMove(event) {
+            if (OS.draggedWindow && event.touches.length === 1) {
+                event.preventDefault();
+                const insets = getSafeAreaInsets();
+                const clientX = event.touches[0].clientX;
+                const clientY = event.touches[0].clientY;
+                
+                let newX = clientX - OS.dragOffset.x;
+                let newY = clientY - OS.dragOffset.y;
+                
+                // Keep window within desktop bounds, considering taskbar position
+                const taskbarHeightVal = parseFloat(OS.settings.taskbarHeight);
+
+                let minX = insets.left;
+                let minY = insets.top;
+                let maxX = window.innerWidth - OS.draggedWindow.offsetWidth - insets.right;
+                let maxY = window.innerHeight - OS.draggedWindow.offsetHeight - insets.bottom;
+
+                if (OS.settings.taskbarPosition === 'bottom') {
+                    maxY -= taskbarHeightVal;
+                } else if (OS.settings.taskbarPosition === 'top') {
+                    minY += taskbarHeightVal;
+                } else if (OS.settings.taskbarPosition === 'left') {
+                    minX += taskbarHeightVal;
+                } else if (OS.settings.taskbarPosition === 'right') {
+                    maxX -= taskbarHeightVal;
+                }
+                
+                newX = Math.max(minX, newX);
+                newX = Math.min(newX, maxX);
+
+                newY = Math.max(minY, newY);
+                newY = Math.min(newY, maxY);
+                
+                OS.draggedWindow.style.left = newX + 'px';
+                OS.draggedWindow.style.top = newY + 'px';
+            }
+        }
+
+        function handleGlobalTouchEnd() {
+            OS.draggedWindow = null;
+        }
+
+        // Taskbar management
+        function updateTaskbar() {
+            const taskbarApps = document.getElementById('taskbar-apps');
+            taskbarApps.innerHTML = '';
+
+            // Iterate over OS.runningApps directly, which now has windowId as key
+            OS.runningApps.forEach((appData, windowId) => {
+                const window = OS.windows.get(windowId);
+                const button = document.createElement('div');
+                button.className = 'taskbar-app';
+                
+                if (window && !window.classList.contains('minimized')) {
+                    button.classList.add('active');
+                }
+                
+                button.onclick = () => {
+                    if (window && window.classList.contains('minimized')) {
+                        focusWindow(windowId); // Use windowId from loop
+                    } else if (window && window.style.zIndex == OS.nextZIndex) {
+                        minimizeWindow(windowId); // Use windowId from loop
+                    } else {
+                        focusWindow(windowId); // Use windowId from loop
+                    }
+                };
+
+                button.innerHTML = `
+                    <span class="taskbar-icon">${appData.app.emoji}</span>
+                    <span class="taskbar-label">${appData.app.name}</span>
+                `;
+
+                taskbarApps.appendChild(button);
+            });
+        }
+
+        // App Store functionality
+        function createAppStoreContent() {
+            return `
+                <div class="app-store">
+                    <h2>App Store</h2>
+                    <p>Discover and install new applications</p>
+                    <div id="app-store-content" class="loading">
+                        Loading apps...
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadAppStoreData() {
+            const contentDiv = document.getElementById('app-store-content');
+            if (!contentDiv) return;
+
+            try {
+                // This will still attempt to fetch, but syncSystemApps is removed from init
+                // If you want to entirely remove the fetch from the App Store, this part needs removal too.
+                const response = await fetch('https://raw.githubusercontent.com/ScienceboyZ/5minHTMLCrafts/main/apps.json');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch app data');
+                }
+                
+                const appsText = await response.text();
+                const apps = JSON.parse(appsText);
+                displayApps(apps);
+            } catch (error) {
+                contentDiv.innerHTML = `
+                    <div class="error">
+                        <h3>Failed to load apps</h3>
+                        <p>Could not connect to the app store. Please check your internet connection.</p>
+                        <button class="install-btn" onclick="loadAppStoreData()">Retry</button>
+                    </div>
+                `;
+            }
+        }
+
+        function displayApps(apps) {
+            const contentDiv = document.getElementById('app-store-content');
+            if (!contentDiv) return;
+
+            contentDiv.innerHTML = `
+                <div class="app-list">
+                    ${apps.map(app => `
+                        <div class="app-item">
+                            <div class="app-header">
+                                <div class="app-emoji">${app.emoji}</div>
+                                <div class="app-name">${app.name}</div>
+                            </div>
+                            <div class="app-description">${app.description}</div>
+                            <button class="install-btn" 
+                                    onclick="installApp('${app.name}', '${app.emoji}', '${app.description}', '${app.htmlUrl ? app.htmlUrl : ''}', '${app.htmlContent ? encodeURIComponent(app.htmlContent) : ''}')"
+                                    ${OS.installedApps.has(generateAppId(app.name)) ? 'disabled' : ''}>
+                                ${OS.installedApps.has(generateAppId(app.name)) ? 'Installed' : 'Install'}
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        async function installApp(name, emoji, description, htmlUrl, encodedHtmlContent) {
+            const appId = generateAppId(name);
+            
+            if (OS.installedApps.has(appId)) {
+                showAlert('App Already Installed', `${name} is already installed.`);
+                return;
+            }
+
+            const app = {
+                id: appId,
+                name: name,
+                emoji: emoji,
+                description: description,
+                type: 'system'
+            };
+            if (htmlUrl) app.htmlUrl = htmlUrl;
+            if (encodedHtmlContent) app.htmlContent = decodeURIComponent(encodedHtmlContent);
+
+
+            OS.installedApps.set(appId, app);
+            saveInstalledApps(); 
+            updateDesktopIcons();
+            
+            if (document.getElementById('app-store-content')) {
+                loadAppStoreData(); // Refresh app store to show "Installed" status
+            }
+            
+            showAlert('Installation Complete', `${name} has been installed successfully!`);
+        }
+
+        function generateAppId(name) {
+            return name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        }
+
+        // File Explorer functionality
+        function createFileExplorerContent() {
+            return `
+                <div class="file-explorer">
+                    <h2>📁 File Explorer</h2>
+                    <div class="file-toolbar">
+                        <button class="toolbar-btn" onclick="createFilePrompt()">📝 New File</button>
+                        <button class="toolbar-btn" onclick="createFolderPrompt()">📁 New Folder</button>
+                        <button class="toolbar-btn" onclick="goUpDirectory()">⬆️ Go Up</button>
+                        <button class="toolbar-btn" onclick="refreshFileExplorer()">🔄 Refresh</button>
+                    </div>
+                    <div class="file-path" id="file-explorer-path">${OS.currentDirectory}</div>
+                    <div id="file-list" class="file-list"></div>
+                </div>
+            `;
+        }
+
+        // Function to create a new folder
+        function createFolder(folderName) {
+            if (!folderName) {
+                showAlert('Folder name cannot be empty.');
+                return;
+            }
+            const folderPath = normalizePath(OS.currentDirectory + '/' + folderName);
+            if (OS.files.has(folderPath)) {
+                showAlert(`Folder '${folderName}' already exists.`);
+                return;
+            }
+
+            OS.files.set(folderPath, { name: folderName, type: 'folder', path: folderPath, created: new Date().toISOString() });
+            saveFiles();
+            updateFileList();
+            showAlert(`Folder '${folderName}' created successfully.`);
+        }
+
+        // Prompt for new folder name
+        function createFolderPrompt() {
+            showPrompt('New Folder', 'Enter folder name:', '', (folderName) => {
+                if (folderName) {
+                    createFolder(folderName);
+                }
+            });
+        }
+
+        // Function to create a new file (similar to promptNewFile but for current directory)
+        function createFile(fileName) {
+            if (!fileName) {
+                showAlert('File name cannot be empty.');
+                return;
+            }
+            const filePath = normalizePath(OS.currentDirectory + '/' + fileName);
+            if (OS.files.has(filePath)) {
+                showAlert(`File '${fileName}' already exists.`);
+                return;
+            }
+            // Default file type to text/plain if no extension is given or handled
+            const fileType = fileName.includes('.') ? getMimeType(fileName.split('.').pop()) : 'text/plain';
+            OS.files.set(filePath, { name: fileName, type: fileType, path: filePath, content: '', created: new Date().toISOString() });
+            saveFiles();
+            updateFileList();
+            showAlert(`File '${fileName}' created successfully.`);
+        }
+
+        // Prompt for new file name
+        function createFilePrompt() {
+            showPrompt('New File', 'Enter file name (e.g., mydocument.txt or index.html):', '', (fileName) => {
+                if (fileName) {
+                    createFile(fileName);
+                }
+            });
+        }
+
+        // Helper to get MIME type (can be expanded)
+        function getMimeType(extension) {
+            switch (extension.toLowerCase()) {
+                case 'html': return 'text/html';
+                case 'txt': return 'text/plain';
+                case 'js': return 'text/javascript';
+                case 'css': return 'text/css';
+                case 'json': return 'application/json';
+                case 'md': return 'text/markdown';
+                case 'py': return 'text/x-python'; // Python files
+                default: return 'text/plain';
+            }
+        }
+
+        // Helper to get CodeMirror mode based on file extension
+        function getCodeMirrorModeForFile(fileName) {
+            const parts = fileName.split('.');
+            const extension = parts.length > 1 ? parts.pop().toLowerCase() : '';
+            switch (extension) {
+                case 'html':
+                case 'htm': return 'htmlmixed';
+                case 'js': return 'javascript';
+                case 'css': return 'css';
+                case 'json': return { name: 'javascript', json: true }; // Use javascript mode for JSON
+                case 'md': return 'markdown';
+                case 'py': return 'python';
+                case 'c':
+                case 'cpp':
+                case 'java': return 'clike';
+                default: return 'null'; // Plain text mode
+            }
+        }
+
+
+        // Function to delete a file or folder
+        function deleteItem(itemPath) {
+            const normalizedPath = normalizePath(itemPath);
+            if (!OS.files.has(normalizedPath)) {
+                showAlert(`Item '${itemPath}' not found.`);
+                return;
+            }
+
+            const item = OS.files.get(normalizedPath);
+
+            if (item.type === 'folder') {
+                // Check if folder is empty (contains no files or subfolders)
+                let isFolderEmpty = true;
+                OS.files.forEach((file, path) => {
+                    if (path.startsWith(normalizedPath + '/') && path !== normalizedPath) {
+                        isFolderEmpty = false;
+                    }
+                });
+
+                if (!isFolderEmpty) {
+                    showConfirm(`Folder '${item.name}' is not empty. Do you want to delete it and its contents?`, (confirmed) => {
+                        if (confirmed) {
+                            // Recursively delete contents
+                            const itemsToDelete = [];
+                            OS.files.forEach((file, path) => {
+                                if (path.startsWith(normalizedPath + '/')) {
+                                    itemsToDelete.push(path);
+                                }
+                            });
+                            itemsToDelete.forEach(path => OS.files.delete(path));
+                            OS.files.delete(normalizedPath); // Delete the folder itself
+                            saveFiles();
+                            updateFileList();
+                            showAlert(`Folder '${item.name}' and its contents deleted.`);
+                        }
+                    });
+                } else {
+                    showConfirm(`Are you sure you want to delete folder '${item.name}'?`, (confirmed) => {
+                        if (confirmed) {
+                            OS.files.delete(normalizedPath);
+                            saveFiles();
+                            updateFileList();
+                            showAlert(`Folder '${item.name}' deleted successfully.`);
+                        }
+                    });
+                }
+            } else { // It's a file
+                showConfirm(`Are you sure you want to delete file '${item.name}'?`, (confirmed) => {
+                    if (confirmed) {
+                        OS.files.delete(normalizedPath);
+                        saveFiles();
+                        updateFileList();
+                        showAlert(`File '${item.name}' deleted successfully.`);
+                    }
+                });
+            }
+        }
+
+        // Prompt for item to delete
+        function deleteItemPrompt(itemPath) {
+            if (itemPath) {
+                 deleteItem(itemPath);
+            } else {
+                showPrompt('Delete Item', 'Enter path of item to delete (e.g., /documents/myfolder or /documents/myfile.txt):', '', (path) => {
+                    if (path) {
+                        deleteItem(path);
+                    }
+                });
+            }
+        }
+
+        // Navigate up one directory
+        function goUpDirectory() {
+            if (OS.currentDirectory === '/') {
+                showAlert('Already at root directory.');
+                return;
+            }
+            const parentPath = normalizePath(OS.currentDirectory.substring(0, OS.currentDirectory.lastIndexOf('/')));
+            OS.currentDirectory = parentPath === '' ? '/' : parentPath; // Handle case where parent is root
+            updateFileList();
+        }
+
+        // Refresh file explorer display
+        function refreshFileExplorer() {
+            updateFileList();
+            showAlert('File Explorer refreshed.');
+        }
+
+        // Update the file list display in File Explorer
+        function updateFileList() {
+            const fileListDiv = document.getElementById('file-list');
+            const filePathDiv = document.getElementById('file-explorer-path');
+            if (!fileListDiv || !filePathDiv) return;
+
+            filePathDiv.textContent = OS.currentDirectory;
+            fileListDiv.innerHTML = ''; // Clear current list
+
+            const itemsToAdd = new Map(); // Use map to prevent duplicates by path, storing {name, type}
+
+            const currentDirPrefix = OS.currentDirectory === '/' ? '/' : OS.currentDirectory + '/';
+
+            // Iterate over ALL files and determine what to display in current directory
+            OS.files.forEach((fileEntry, fullPath) => {
+                if (!fullPath.startsWith(currentDirPrefix)) {
+                    return; // Not in or under the current directory
+                }
+
+                const relativePath = fullPath.substring(currentDirPrefix.length);
+                if (relativePath === '') {
+                    return; // This is the current directory itself, not an item within it
+                }
+
+                const firstSlashIndex = relativePath.indexOf('/');
+
+                if (firstSlashIndex === -1) {
+                    // This is a direct file or an explicit direct folder
+                    itemsToAdd.set(fullPath, { name: fileEntry.name, type: fileEntry.type, path: fullPath });
+                } else {
+                    // This is a file/folder inside a subdirectory. We need to show the subdirectory.
+                    const subfolderName = relativePath.substring(0, firstSlashIndex);
+                    const subfolderPath = normalizePath(currentDirPrefix + subfolderName);
+                    // Add this subfolder as an item to display, but only if it's not already added
+                    // and not already an explicit file (which would imply naming conflict)
+                    if (!itemsToAdd.has(subfolderPath)) {
+                        // Check if an explicit folder entry already exists for this path
+                        const existingExplicitFolder = OS.files.get(subfolderPath);
+                        if (existingExplicitFolder && existingExplicitFolder.type === 'folder') {
+                            itemsToAdd.set(subfolderPath, { name: subfolderName, type: 'folder', path: subfolderPath });
+                        } else {
+                            // It's an implicit folder
+                            itemsToAdd.set(subfolderPath, { name: subfolderName, type: 'folder', path: subfolderPath });
+                        }
+                    }
+                }
+            });
+
+            // Convert map values to array and sort
+            const sortedItems = Array.from(itemsToAdd.values()).sort((a, b) => {
+                const typeA = a.type === 'folder' ? 0 : 1;
+                const typeB = b.type === 'folder' ? 0 : 1;
+                if (typeA !== typeB) {
+                    return typeA - typeB;
+                }
+                return a.name.localeCompare(b.name);
+            });
+
+            if (sortedItems.length === 0) {
+                fileListDiv.innerHTML = '<p style="text-align: center; color: #666;">This folder is empty.</p>';
+                return;
+            }
+
+            sortedItems.forEach(itemInfo => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'file-item';
+                itemDiv.dataset.path = itemInfo.path; // Store full path
+
+                let icon = '';
+                let meta = '';
+
+                if (itemInfo.type === 'folder') {
+                    icon = '📁';
+                    meta = 'Folder';
+                    itemDiv.onclick = () => openFileOrFolder(itemInfo.path, 'folder');
+                } else { // type === 'file'
+                    icon = getFileIcon(itemInfo.name); // Helper to get file icon
+                    meta = `File (${itemInfo.type || 'unknown'})`;
+                    itemDiv.onclick = () => openFileOrFolder(itemInfo.path, 'file');
+                }
+
+                itemDiv.innerHTML = `
+                    <div class="file-icon">${icon}</div>
+                    <div class="file-name">${itemInfo.name}</div>
+                    <div class="file-meta">${meta}</div>
+                `;
+
+                itemDiv.addEventListener('contextmenu', (e) => {
+                    e.preventDefault(); 
+                    showContextMenu(e, itemDiv, itemInfo.path);
+                });
+
+                fileListDiv.appendChild(itemDiv);
+            });
+        }
+
+        // Helper function to determine file icon based on extension
+        function getFileIcon(fileName) {
+            const parts = fileName.split('.');
+            const extension = parts.length > 1 ? parts.pop().toLowerCase() : '';
+            switch (extension) {
+                case 'txt': return '📄';
+                case 'html':
+                case 'htm': return '🌐';
+                case 'js': return '📜';
+                case 'css': return '🎨';
+                case 'json': return '💾';
+                case 'md': return '🗒️';
+                case 'py': return '🐍'; /* Changed icon for Python files */
+                default: return '❓';
+            }
+        }
+
+        // Open a file or navigate into a folder
+        function openFileOrFolder(itemPath, type) {
+            const normalizedPath = normalizePath(itemPath);
+            if (type === 'folder') {
+                OS.currentDirectory = normalizedPath;
+                updateFileList();
+            } else if (type === 'file') {
+                const file = OS.files.get(normalizedPath);
+                if (file) {
+                    // Decide whether to open in Notepad or HTML editor based on type/extension
+                    if (file.type === 'text/html' || file.name.endsWith('.html') || file.name.endsWith('.htm')) {
+                        launchApp('notepad', { filePath: normalizedPath, newWindow: true }); // Open in new window
+                    } else if (file.type.startsWith('text/') || file.type === 'application/json' || file.name.endsWith('.js') || file.name.endsWith('.css') || file.name.endsWith('.md')) {
+                        launchApp('notepad', { filePath: normalizedPath, newWindow: true }); // Open in new window
+                    } else if (file.name.endsWith('.py')) { // Explicitly handle Python files
+                        launchApp('notepad', { filePath: normalizedPath, newWindow: true, startInPythonMode: true }); // Open in new window with Python mode
+                    }
+                    else {
+                        showAlert(`No default app to open files of type: ${file.type}`);
+                    }
+                } else {
+                    showAlert(`File not found: ${normalizedPath}`);
+                }
+            }
+        }
+        
+        // Context menu for file/folder items
+        function showContextMenu(event, element, itemPath) {
+            const contextMenu = document.createElement('div');
+            contextMenu.className = 'context-menu';
+            contextMenu.style.position = 'absolute';
+            contextMenu.style.left = `${event.clientX}px`;
+            contextMenu.style.top = `${event.clientY}px`;
+            contextMenu.style.background = 'white';
+            contextMenu.style.border = '1px solid #ccc';
+            contextMenu.style.borderRadius = '5px';
+            contextMenu.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+            contextMenu.style.zIndex = OS.nextZIndex + 1; // Ensure it's on top
+
+            const deleteOption = document.createElement('div');
+            deleteOption.className = 'context-menu-item';
+            deleteOption.style.padding = '8px 15px';
+            deleteOption.style.cursor = 'pointer';
+            deleteOption.style.color = '#333';
+            deleteOption.textContent = 'Delete';
+            deleteOption.onclick = () => {
+                deleteItem(itemPath);
+                contextMenu.remove();
+            };
+            deleteOption.onmouseover = () => deleteOption.style.background = '#f0f0f0';
+            deleteOption.onmouseout = () => deleteOption.style.background = 'white';
+
+            contextMenu.appendChild(deleteOption);
+            document.body.appendChild(contextMenu);
+
+            // Close context menu when clicking elsewhere
+            const closeContextMenu = (e) => {
+                if (!contextMenu.contains(e.target)) {
+                    contextMenu.remove();
+                    document.removeEventListener('click', closeContextMenu);
+                }
+            };
+            document.addEventListener('click', closeContextMenu);
+        }
+
+        // Settings App functionality (formerly Customization App)
+        function createSettingsContent() {
+            return `
+                <div class="settings-app">
+                    <h2>⚙️ Settings</h2>
+                    <p>Personalize and configure your OS.</p>
+
+                    <h3>Appearance</h3>
+                    <div class="settings-option">
+                        <label for="textColor">Global Text Color:</label>
+                        <input type="color" id="textColor" onchange="updateSetting('textColor', this.value)">
+                    </div>
+
+                    <div class="settings-option">
+                        <label for="desktopBackground">Desktop Background Color:</label>
+                        <input type="color" id="desktopBackgroundColor" onchange="updateSetting('desktopBackground', this.value)">
+                        <label for="desktopBackgroundImage">Desktop Background Image:</label>
+                        <input type="file" id="desktopBackgroundImage" accept="image/*" onchange="handleBackgroundImageUpload(event)">
+                        <button class="toolbar-btn" onclick="clearBackgroundImage()">Clear Image</button>
+                    </div>
+
+                    <div class="settings-option">
+                        <label for="windowBorderColor">Window Border Color:</label>
+                        <input type="color" id="windowBorderColor" onchange="updateSetting('windowBorderColor', this.value)">
+                    </div>
+
+                    <div class="settings-option">
+                        <label for="taskbarColor">Taskbar Color:</label>
+                        <input type="color" id="taskbarColor" onchange="updateSetting('taskbarColor', this.value)">
+                    </div>
+
+                    <div class="settings-option">
+                        <label for="titlebarColor">Window Titlebar Color:</label>
+                        <input type="color" id="titlebarColor" onchange="updateSetting('titlebarColor', this.value)">
+                    </div>
+
+                    <div class="settings-option">
+                        <label for="titlebarTextColor">Window Titlebar Text Color:</label>
+                        <input type="color" id="titlebarTextColor" onchange="updateSetting('titlebarTextColor', this.value)">
+                    </div>
+
+                    <div class="settings-option">
+                        <label for="windowBg">Window Background:</label>
+                        <input type="color" id="windowBg" onchange="updateSetting('windowBg', this.value)">
+                    </div>
+
+                    <div class="settings-option">
+                        <label for="windowContentBg">Window Content Background:</label>
+                        <input type="color" id="windowContentBg" onchange="updateSetting('windowContentBg', this.value)">
+                    </div>
+
+                    <div class="settings-option">
+                        <label for="windowContentTextColor">Window Content Text Color:</label>
+                        <input type="color" id="windowContentTextColor" onchange="updateSetting('windowContentTextColor', this.value)">
+                    </div>
+
+                    <h3>Taskbar Advancements</h3>
+                    <div class="settings-option">
+                        <label for="taskbarPosition">Position:</label>
+                        <select id="taskbarPosition" onchange="updateSetting('taskbarPosition', this.value)">
+                            <option value="bottom">Bottom</option>
+                            <option value="top">Top</option>
+                            <option value="left">Left</option>
+                            <option value="right">Right</option>
+                        </select>
+                    </div>
+                    <div class="settings-option">
+                        <label for="taskbarHeight">Height/Width:</label>
+                        <input type="range" id="taskbarHeight" min="40" max="100" value="50" oninput="updateSetting('taskbarHeight', this.value + 'px')">
+                        <span id="taskbarHeightValue">50px</span>
+                    </div>
+                    <div class="settings-option">
+                        <label for="taskbarIconSize">Icon Size:</label>
+                        <input type="range" id="taskbarIconSize" min="12" max="32" value="16" oninput="updateSetting('taskbarIconSize', this.value + 'px')">
+                        <span id="taskbarIconSizeValue">16px</span>
+                    </div>
+                    <div class="settings-option">
+                        <label for="taskbarLabelFontSize">Label Font Size:</label>
+                        <input type="range" id="taskbarLabelFontSize" min="8" max="20" value="12" oninput="updateSetting('taskbarLabelFontSize', this.value + 'px')">
+                        <span id="taskbarLabelFontSizeValue">12px</span>
+                    </div>
+                    <div class="settings-option">
+                        <label for="taskbarAutoHide">Auto-hide:</label>
+                        <input type="checkbox" id="taskbarAutoHide" onchange="updateSetting('taskbarAutoHide', this.checked)">
+                    </div>
+
+                    <h3>Startup Applications</h3>
+                    <div class="settings-option" id="startupAppsList">
+                        </div>
+                    <button class="toolbar-btn" onclick="openStartupAppSelection()">Manage Startup Apps</button>
+
+                    <h3>Developer Mode</h3>
+                    <div class="settings-option">
+                        <label for="enableConsoleLogging">Enable Console Logging:</label>
+                        <input type="checkbox" id="enableConsoleLogging" onchange="updateDeveloperSetting('enableConsoleLogging', this.checked)">
+                    </div>
+                    <div class="settings-option">
+                        <label for="showHiddenFiles">Show Hidden Files (File Explorer):</label>
+                        <input type="checkbox" id="showHiddenFiles" onchange="updateDeveloperSetting('showHiddenFiles', this.checked)">
+                    </div>
+                    <div class="settings-option">
+                        <label for="showPerformanceOverlay">Show Performance Overlay:</label>
+                        <input type="checkbox" id="showPerformanceOverlay" onchange="updateDeveloperSetting('showPerformanceOverlay', this.checked)">
+                    </div>
+
+                    <h3>Notepad IDE Settings</h3>
+                    <div class="settings-option">
+                        <label for="settingsNotepadTheme">Default Theme:</label>
+                        <select id="settingsNotepadTheme" onchange="updateSetting('notepadTheme', this.value)">
+                            <option value="dracula">Dracula</option>
+                            <option value="material">Material</option>
+                            </select>
+                        </select>
+                    </div>
+                    <div class="settings-option">
+                        <label for="settingsNotepadMode">Default Mode:</label>
+                        <select id="settingsNotepadMode" onchange="updateSetting('notepadMode', this.value)">
+                            <option value="htmlmixed">HTML/XML</option>
+                            <option value="css">CSS</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="python">Python</option>
+                            <option value="clike">C/C++/Java</option>
+                            <option value="markdown">Markdown</option>
+                            <option value="null">Plain Text</option>
+                        </select>
+                    </div>
+                     <div class="settings-option">
+                        <label for="settingsNotepadSexyUI">Enable Sexy UI Mode:</label>
+                        <input type="checkbox" id="settingsNotepadSexyUI" onchange="updateSetting('notepadSexyUI', this.checked)">
+                    </div>
+
+                    <button class="install-btn" onclick="resetSettings()">Reset to Defaults</button>
+                </div>
+            `;
+        }
+
+        function loadSettingsForm() {
+            // Appearance
+            document.getElementById('textColor').value = OS.settings.textColor;
+            const desktopBgInput = document.getElementById('desktopBackgroundColor');
+            if (OS.settings.desktopBackground && OS.settings.desktopBackground.startsWith('#')) {
+                 desktopBgInput.value = OS.settings.desktopBackground;
+            } else {
+                 desktopBgInput.value = '#000000'; // Or any default color when image is set
+            }
+            document.getElementById('windowBorderColor').value = OS.settings.windowBorderColor;
+            document.getElementById('taskbarColor').value = OS.settings.taskbarColor;
+            document.getElementById('titlebarColor').value = OS.settings.titlebarColor.startsWith('#') ? OS.settings.titlebarColor : '#4CAF50'; 
+            document.getElementById('titlebarTextColor').value = OS.settings.titlebarTextColor;
+            document.getElementById('windowBg').value = OS.settings.windowBg;
+            document.getElementById('windowContentBg').value = OS.settings.windowContentBg;
+            document.getElementById('windowContentTextColor').value = OS.settings.windowContentTextColor;
+
+            // Taskbar Advancements
+            document.getElementById('taskbarPosition').value = OS.settings.taskbarPosition;
+            document.getElementById('taskbarHeight').value = parseFloat(OS.settings.taskbarHeight);
+            document.getElementById('taskbarHeightValue').textContent = OS.settings.taskbarHeight;
+            document.getElementById('taskbarIconSize').value = parseFloat(OS.settings.taskbarIconSize);
+            document.getElementById('taskbarIconSizeValue').textContent = OS.settings.taskbarIconSize;
+            document.getElementById('taskbarLabelFontSize').value = parseFloat(OS.settings.taskbarLabelFontSize);
+            document.getElementById('taskbarLabelFontSizeValue').textContent = OS.settings.taskbarLabelFontSize;
+            document.getElementById('taskbarAutoHide').checked = OS.settings.taskbarAutoHide;
+
+            // Developer Mode
+            document.getElementById('enableConsoleLogging').checked = OS.settings.developerMode.enableConsoleLogging;
+            document.getElementById('showHiddenFiles').checked = OS.settings.developerMode.showHiddenFiles;
+            document.getElementById('showPerformanceOverlay').checked = OS.settings.developerMode.showPerformanceOverlay;
+
+            // Notepad Settings
+            document.getElementById('settingsNotepadTheme').value = OS.settings.notepadTheme;
+            document.getElementById('settingsNotepadMode').value = OS.settings.notepadMode;
+            document.getElementById('settingsNotepadSexyUI').checked = OS.settings.notepadSexyUI;
+
+            // Update startup apps list display (can be simplified or open a modal)
+            const startupAppsListDiv = document.getElementById('startupAppsList');
+            if (startupAppsListDiv) {
+                let html = '<label>Currently on Startup:</label>';
+                if (OS.settings.startupApps.length === 0) {
+                    html += '<p style="font-size: 0.9em; color: #666;">No apps set to start automatically.</p>';
+                } else {
+                    html += '<ul style="list-style: none; padding: 0;">';
+                    OS.settings.startupApps.forEach(appId => {
+                        const app = OS.installedApps.get(appId);
+                        if (app) html += `<li>${app.emoji} ${app.name}</li>`;
+                    });
+                    html += '</ul>';
+                }
+                startupAppsListDiv.innerHTML = html;
+            }
+        }
+
+        function updateSetting(key, value) {
+            OS.settings[key] = value;
+            saveSettings(); 
+            applySettings(); // Re-apply all settings
+            // Update range value displays
+            if (key === 'taskbarHeight') document.getElementById('taskbarHeightValue').textContent = value;
+            if (key === 'taskbarIconSize') document.getElementById('taskbarIconSizeValue').textContent = value;
+            if (key === 'taskbarLabelFontSize') document.getElementById('taskbarLabelFontSizeValue').textContent = value;
+            
+            // If developer mode affects file explorer, refresh it
+            if (key === 'showHiddenFiles' && OS.runningApps.has('file-explorer')) {
+                updateFileList();
+            }
+        }
+
+        function updateDeveloperSetting(key, value) {
+            OS.settings.developerMode[key] = value;
+            saveSettings(); 
+            applySettings(); // Re-apply all settings (important for logging)
+            if (key === 'showHiddenFiles') {
+                updateFileList(); // Refresh file explorer if open
+            }
+        }
+
+        function handleBackgroundImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    updateSetting('desktopBackground', `url('${e.target.result}')`);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function clearBackgroundImage() {
+            updateSetting('desktopBackground', ''); // Clear background image, revert to default color/gradient
+            document.getElementById('desktopBackgroundImage').value = ''; // Clear file input
+            document.getElementById('desktopBackgroundColor').value = '#000000'; // Reset color picker
+        }
+
+        function resetSettings() {
+            showConfirm('Are you sure you want to reset all settings to defaults?', (confirmed) => {
+                if (confirmed) {
+                    // Reset to hardcoded defaults or initial state
+                    OS.settings = {
+                        textColor: 'white',
+                        desktopBackground: '', // This will revert to the CSS default linear-gradient
+                        windowBorderColor: '#ccc',
+                        taskbarColor: 'rgba(0, 0, 0, 0.8)',
+                        titlebarColor: 'linear-gradient(135deg, #4CAF50, #45a049)',
+                        titlebarTextColor: 'white',
+                        windowBg: 'white',
+                        windowContentBg: 'white',
+                        windowContentTextColor: '#333',
+                        taskbarPosition: 'bottom',
+                        taskbarIconSize: '16px',
+                        taskbarLabelFontSize: '12px',
+                        taskbarHeight: '50px',
+                        taskbarAutoHide: false,
+                        startupApps: [],
+                        developerMode: {
+                            enableConsoleLogging: false,
+                            showHiddenFiles: false,
+                            showPerformanceOverlay: false
+                        },
+                        keyboardMode: 'default',
+                        notepadTheme: 'dracula',
+                        notepadMode: 'htmlmixed',
+                        notepadSexyUI: false,
+                        osVersion: "4.0" // Keep the version fixed
+                    };
+                    saveSettings(); 
+                    applySettings();
+                    loadSettingsForm(); // Update the form inputs
+                    showAlert('Settings Reset', 'Settings reset to defaults!');
+                }
+            });
+        }
+
+        function openStartupAppSelection() {
+            // This could open a modal for selecting startup apps
+            let appOptionsHtml = '';
+            OS.installedApps.forEach(app => {
+                const isChecked = OS.settings.startupApps.includes(app.id) ? 'checked' : '';
+                appOptionsHtml += `
+                    <div>
+                        <input type="checkbox" id="startup-${app.id}" value="${app.id}" ${isChecked}>
+                        <label for="startup-${app.id}">${app.emoji} ${app.name}</label>
+                    </div>
+                `;
+            });
+
+            // Pass true for isHtmlContent and false for expectsTextValue
+            showPrompt('Manage Startup Apps', 'Select apps to launch on startup:', appOptionsHtml, (result) => {
+                // Result here will be an empty string, we need to read checkboxes directly
+                const selectedApps = [];
+                document.querySelectorAll('.modal-content input[type="checkbox"]').forEach(checkbox => {
+                    if (checkbox.checked) {
+                        selectedApps.push(checkbox.value);
+                    }
+                });
+                OS.settings.startupApps = selectedApps;
+                saveSettings(); 
+                loadSettingsForm(); // Refresh the settings form display
+                showAlert('Startup Apps Updated', 'Startup apps updated!');
+            }, true, false); // Explicitly state no text confirmation needed for this prompt
+        }
+
+
+        // Task Manager App
+        function createTaskManagerContent() {
+            return `
+                <div class="task-manager">
+                    <h2>📊 Task Manager</h2>
+                    <p>Monitor and manage running applications.</p>
+                    <div class="task-manager-toolbar">
+                        <button class="toolbar-btn" onclick="showStartNewTaskModal()">➕ Start New Task</button>
+                        <button class="toolbar-btn" onclick="updateTaskManagerList()">🔄 Refresh List</button>
+                    </div>
+                    <ul id="running-tasks-list" class="task-manager-list">
+                        </ul>
+                </div>
+            `;
+        }
+
+        function updateTaskManagerList() {
+            const taskList = document.getElementById('running-tasks-list');
+            if (!taskList) return;
+
+            taskList.innerHTML = '';
+            if (OS.runningApps.size === 0) {
+                taskList.innerHTML = '<li style="text-align:center;padding:20px;color:#666;">No applications are currently running.</li>';
+                return;
+            }
+
+            // Iterate using windowId as key to list each instance
+            OS.runningApps.forEach((appData, windowId) => {
+                const listItem = document.createElement('li');
+                listItem.className = 'task-manager-item';
+                // Display app name and windowId to distinguish instances
+                listItem.innerHTML = `
+                    <span>${appData.app.emoji} ${appData.app.name} (${windowId})</span>
+                    <button onclick="forceEndTask('${windowId}')">End Task</button>
+                `;
+                taskList.appendChild(listItem);
+            });
+        }
+
+        function forceEndTask(windowId) {
+            showConfirm('Are you sure you want to forcefully end this task? Unsaved changes may be lost.', (confirmed) => {
+                if (confirmed) {
+                    console.log(`Force ending task for windowId: ${windowId}`);
+                    closeWindow(windowId);
+                    // updateTaskManagerList() is already called by closeWindow, so it's redundant but harmless.
+                    showAlert('Task Ended', 'Task ended successfully.');
+                }
+            });
+        }
+
+        function showStartNewTaskModal() {
+            let appOptionsHtml = '';
+            OS.installedApps.forEach(app => {
+                appOptionsHtml += `<option value="${app.id}">${app.emoji} ${app.name}</option>`;
+            });
+
+            // Pass true for isHtmlContent and false for expectsTextValue
+            showPrompt('Start New Task', 'Select an application to launch:', `<select id="start-new-app-select">${appOptionsHtml}</select>`, (result) => {
+                const selectedAppId = document.getElementById('start-new-app-select').value;
+                if (selectedAppId) {
+                    launchApp(selectedAppId, {newWindow: true}); // Always launch as new window from task manager modal
+                }
+            }, true, false); // Explicitly state no text confirmation needed for this prompt
+        }
+
+        // Cmd App
+        function createCmdContent() {
+            return `
+                <div class="cmd-app">
+                    <div id="cmd-output">
+                        <span class="cmd-prompt">${OS.currentDirectory}></span> Welcome to HTML OS CMD. Type 'help' for available commands.<br>
+                    </div>
+                    <input type="text" id="cmd-input" placeholder="" autofocus>
+                </div>
+            `;
+        }
+
+        // Helper function to update CMD output
+        function updateCmdOutput(message, isError = false) {
+            const output = document.getElementById('cmd-output');
+            if (output) {
+                const spanClass = isError ? 'cmd-error' : '';
+                output.innerHTML += `<span class="${spanClass}">${message}</span>\n`;
+                output.scrollTop = output.scrollHeight;
+            }
+        }
+
+        // Helper to determine the correct output target for Python messages (used by pythonOutput global function)
+        function getCurrentPythonOutputTarget() {
+            // If Notepad is open and in Python mode for this specific window
+            const activeWindow = document.querySelector('.window:not(.minimized)');
+            if (activeWindow) {
+                const notepadApp = activeWindow.querySelector('.notepad-app');
+                if (notepadApp && notepadApp.classList.contains('python-mode-active')) {
+                    return 'notepad-python-output';
+                }
+            }
+            // If CMD is open and active (e.g., for 'pip install')
+            const cmdApp = activeWindow.querySelector('.cmd-app'); // Only check if cmdApp is in the active window
+            if (cmdApp) { 
+                return 'cmd-output';
+            }
+            // Fallback: If no specific context is found, it shouldn't happen, but here for robustness.
+            // In this merged scenario, it should almost always be notepad-python-output or cmd-output
+            console.warn("No specific Python output target found. Using default.");
+            return 'cmd-output'; // Arbitrary fallback, maybe to a hidden debug console.
+        }
+
+        // Modified pythonOutput to be flexible
+        function pythonOutput(text, isError = false, targetElementId = null) {
+            const outputElement = document.getElementById(targetElementId); 
+            if (outputElement) {
+                const span = document.createElement('span');
+                span.style.color = isError ? 'red' : 'inherit';
+                span.textContent = text + '\n';
+                outputElement.appendChild(span);
+                outputElement.scrollTop = outputElement.scrollHeight; // Scroll to bottom
+            } else {
+                // Fallback for cases where targetElementId might be null or not found
+                console.error(`Python Output Error: Target element '${targetElementId}' not found. Message: ${text}`);
+                // Potentially log to browser console if the intended element is missing
+                if (isError) console.error(`Python Error: ${text}`);
+                else console.log(`Python Output: ${text}`);
+            }
+        }
+
+
+        function handleCmdInput(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent default enter behavior (e.g., new line)
+                const input = document.getElementById('cmd-input');
+                const output = document.getElementById('cmd-output');
+                let command = input.value.trim();
+                input.value = ''; // Clear input
+
+                if (command === '') {
+                    updateCmdOutput(` `, false); // Add an empty line for prompt
+                    return;
+                }
+
+                output.innerHTML += `<span class="cmd-prompt">${OS.currentDirectory}> ${command}</span>\n`;
+
+                const parts = command.split(' ');
+                const cmd = parts[0].toLowerCase();
+                const args = parts.slice(1);
+
+                try {
+                 switch (cmd) {
+                        case 'echo':
+                            updateCmdOutput(args.join(' '));
+                            break;
+                        case 'cd':
+                            if (args.length > 0) {
+                                changeDirectoryCmd(args[0]);
+                            } else {
+                                updateCmdOutput('Usage: cd &lt;directory&gt;', true);
+                            }
+                            break;
+
+                        case 'edit':
+                            if (args.length === 0) {
+                                updateCmdOutput('Usage: edit <file_name>', true);
+                            } else {
+                                const filePath = normalizePath(OS.currentDirectory + '/' + args[0]);
+                                if (!OS.files.has(filePath)) {
+                                    updateCmdOutput(`edit: No such file exists: ${args[0]}`, true);
+                                } else {
+                                    editFileCmd(filePath);
+                                }
+                            }
+                            break;
+
+                        case 'ls':
+                        case 'dir':
+                            listDirectoryContents(args[0]);
+                            break;
+                        case 'cat':
+                            viewFileContent(args[0]);
+                            break;
+                        case 'mkdir': // New: Make Directory
+                            if (args.length > 0) {
+                                const newFolderName = args[0];
+                                const newFolderPath = normalizePath(OS.currentDirectory + '/' + newFolderName);
+                                if (OS.files.has(newFolderPath) && OS.files.get(newFolderPath).type === 'folder') {
+                                    updateCmdOutput(`mkdir: Directory already exists: ${newFolderName}`, true);
+                                } else {
+                                    createFolder(newFolderName); // Use the existing createFolder function
+                                    updateCmdOutput(`Directory created: ${newFolderName}`);
+                                }
+                            } else {
+                                updateCmdOutput('Usage: mkdir &lt;folder_name&gt;', true);
+                            }
+                            break;
+                        case 'touch': // New: Create a file
+                            if (args.length > 0) {
+                                const newFileName = args[0];
+                                const newFilePath = normalizePath(OS.currentDirectory + '/' + newFileName);
+                                if (OS.files.has(newFilePath)) {
+                                    updateCmdOutput(`touch: File already exists: ${newFileName}`, true);
+                                } else {
+                                    createFile(newFileName); // Use the existing createFile function
+                                    updateCmdOutput(`File created: ${newFileName}`);
+                                }
+                            } else {
+                                updateCmdOutput('Usage: touch &lt;file_name&gt;', true);
+                            }
+                            break;
+                        case 'rmdir': // New: Remove Directory
+                            if (args.length > 0) {
+                                const targetPath = normalizePath(OS.currentDirectory + '/' + args[0]);
+                                if (!OS.files.has(targetPath)) {
+                                    updateCmdOutput(`rmdir: No such file or directory: ${args[0]}`, true);
+                                } else if (OS.files.get(targetPath).type !== 'folder') {
+                                    updateCmdOutput(`rmdir: Not a directory: ${args[0]}`, true);
+                                } else {
+                                    const folderToDelete = OS.files.get(targetPath);
+                                    let isFolderEmpty = true;
+                                    // Check if targetPath has any descendant files/folders
+                                    for (let [path, fileData] of OS.files) {
+                                        if (path.startsWith(targetPath + '/') && path !== targetPath) {
+                                            isFolderEmpty = false;
+                                            break;
+                                        }
+                                    }
+
+                                    if (!isFolderEmpty) {
+                                        updateCmdOutput(`rmdir: Directory not empty: ${args[0]}. Use 'rmdir /s' to delete recursively.`, true);
+                                    } else {
+                                        OS.files.delete(targetPath);
+                                        saveFiles();
+                                        updateFileList(); // Refresh file explorer if open
+                                        updateCmdOutput(`Directory removed: ${args[0]}`);
+                                    }
+                                }
+                            } else {
+                                updateCmdOutput('Usage: rmdir &lt;folder_name&gt;', true);
+                            }
+                            break;
+                        case 'rm': // Simplified for file deletion (will prompt)
+                            if (args.length > 0) {
+                                const targetPath = normalizePath(OS.currentDirectory + '/' + args[0]);
+                                if (!OS.files.has(targetPath)) {
+                                    updateCmdOutput(`rm: No such file or directory: ${args[0]}`, true);
+                                } else if (OS.files.get(targetPath).type === 'folder') {
+                                    updateCmdOutput(`rm: Cannot remove directory; use 'rmdir' or 'rmdir /s': ${args[0]}`, true);
+                                } else {
+                                    // Call the UI-based deleteItem which will prompt for confirmation
+                                    deleteItem(targetPath);
+                                    // The actual success/fail message will come from deleteItem's modal callback
+                                }
+                            } else {
+                                updateCmdOutput('Usage: rm &lt;file_name&gt;', true);
+                            }
+                            break;
+                        case 'rmdir /s': // New: Recursive Remove Directory
+                            if (args.length > 0) {
+                                const targetPath = normalizePath(OS.currentDirectory + '/' + args[0]);
+                                if (!OS.files.has(targetPath)) {
+                                    updateCmdOutput(`rmdir /s: No such file or directory: ${args[0]}`, true);
+                                } else if (OS.files.get(targetPath).type !== 'folder') {
+                                    updateCmdOutput(`rmdir /s: Not a directory: ${args[0]}`, true);
+                                } else {
+                                    // Call the UI-based deleteItem which handles recursive deletion and confirmation
+                                    deleteItem(targetPath);
+                                    // The actual success/fail message will come from deleteItem's modal callback
+                                }
+                            } else {
+                                updateCmdOutput('Usage: rmdir /s &lt;folder_name&gt;', true);
+                            }
+                            break;
+                        case 'clear':
+                        case 'cls':
+                            document.getElementById('cmd-output').innerHTML = ''; // Clear the actual content
+                            break;
+                        case 'help':
+                            updateCmdOutput(`Available commands:
+  echo <text>        - Displays text
+  cd <directory>     - Change current directory
+  ls / dir [path]    - List directory contents
+  cat <file>         - View file content
+  mkdir <folder_name> - Creates a new folder
+  touch <file_name>  - Creates a new empty file
+  rm <file_name>     - Deletes a file (prompts for confirmation)
+  rmdir <folder_name> - Removes an empty folder (prompts for confirmation)
+  rmdir /s <folder_name> - Removes a folder and its contents recursively (prompts for confirmation)
+  pip install <package> - Installs a Python package using Pyodide
+  clear / cls        - Clears the console
+  help               - Displays this help message`, false);
+                            break;
+                        case 'pip':
+                            if (args[0] === 'install') {
+                                const packageName = args.slice(1).join(' ');
+                                if (packageName) {
+                                    installPythonPackageFromCmd(packageName);
+                                } else {
+                                    updateCmdOutput('Usage: pip install <package_name>', true);
+                                }
+                            } else {
+                                updateCmdOutput(`pip: Unknown command '${args[0]}'`, true);
+                            }
+                            break;
+                        default:
+                            updateCmdOutput(`'${cmd}' is not recognized as an internal or external command, operable program or batch file.`, true);
+                            break;
+                    }
+                } catch (e) {
+                    updateCmdOutput(`<span class="cmd-error">Error: ${e.message}</span>`, true);
+                }
+
+                output.scrollTop = output.scrollHeight; // Scroll to bottom
+            }
+        }
+
+        // Cmd specific function to change directory
+        function changeDirectoryCmd(targetDir) {
+            let newPath;
+
+            if (targetDir === '..') {
+                if (OS.currentDirectory === '/') {
+                    updateCmdOutput(`Already at root.`, true);
+                    return;
+                }
+                newPath = normalizePath(OS.currentDirectory.substring(0, OS.currentDirectory.lastIndexOf('/')));
+                if (newPath === '') newPath = '/'; // Handle going up from a direct child of root
+            } else if (targetDir.startsWith('/')) {
+                newPath = normalizePath(targetDir);
+            } else {
+                newPath = normalizePath(OS.currentDirectory + '/' + targetDir);
+            }
+            
+            // Check if the new path exists and is a folder (explicit or implicit)
+            let existsAsFolder = false;
+            if (OS.files.has(newPath) && OS.files.get(newPath).type === 'folder') {
+                existsAsFolder = true;
+            } else {
+                // Check for implicit folders: if any file starts with newPath + '/'
+                for (let [path, fileData] of OS.files) {
+                    if (path.startsWith(newPath + '/') && path !== newPath) {
+                        existsAsFolder = true;
+                        break;
+                    }
+                }
+            }
+
+            if (existsAsFolder) {
+                OS.currentDirectory = newPath;
+                updateCmdOutput(`Changed directory to ${OS.currentDirectory}`);
+                updateFileList(); // Update file explorer if open
+            } else if (OS.files.has(newPath) && OS.files.get(newPath).type !== 'folder') {
+                 updateCmdOutput(`cd: Not a directory: ${targetDir}`, true);
+            }
+            else {
+                updateCmdOutput(`cd: No such directory: ${targetDir}`, true);
+            }
+        }
+
+        // Cmd specific function to list directory contents
+        function listDirectoryContents(pathToList = '') {
+            let targetPath = pathToList ? normalizePath(OS.currentDirectory + '/' + pathToList) : OS.currentDirectory;
+
+            let existsAsFolder = false;
+            if (OS.files.has(targetPath) && OS.files.get(targetPath).type === 'folder') {
+                existsAsFolder = true;
+            } else {
+                // Check for implicit folders
+                for (let [path, fileData] of OS.files) {
+                    if (path.startsWith(targetPath + '/') && path !== targetPath) {
+                        existsAsFolder = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!existsAsFolder) {
+                if (OS.files.has(targetPath)) { // It's a file
+                    updateCmdOutput(`${OS.files.get(targetPath).name}`);
+                } else {
+                    updateCmdOutput(`ls: No such file or directory: ${pathToList || targetPath}`, true);
+                }
+                return;
+            }
+
+            updateCmdOutput(`Contents of ${targetPath}:`);
+            const items = new Map(); // Use a Map to ensure uniqueness by path
+
+            const prefix = targetPath === '/' ? '/' : targetPath + '/';
+
+            OS.files.forEach((item, path) => {
+                if (path === targetPath) return; // Don't list the current directory itself
+
+                if (path.startsWith(prefix)) {
+                    const relativePath = path.substring(prefix.length);
+                    const firstSlashIndex = relativePath.indexOf('/');
+
+                    if (firstSlashIndex === -1) { // Direct child file or explicit folder
+                        items.set(path, { name: item.name, type: item.type });
+                    } else { // It's a subpath, meaning there's an implicit folder
+                        const topLevelFolderName = relativePath.substring(0, firstSlashIndex);
+                        const topLevelFolderPath = normalizePath(prefix + topLevelFolderName);
+                        if (!items.has(topLevelFolderPath)) {
+                            // Only add if not already added and not an explicit file at that path
+                            items.set(topLevelFolderPath, { name: topLevelFolderName, type: 'folder' });
+                        }
+                    }
+                }
+            });
+
+            const sortedItems = Array.from(items.values()).sort((a, b) => {
+                const typeA = a.type === 'folder' ? 0 : 1;
+                const typeB = b.type === 'folder' ? 0 : 1;
+                if (typeA !== typeB) {
+                    return typeA - typeB;
+                }
+                return a.name.localeCompare(b.name);
+            });
+
+            if (sortedItems.length === 0) {
+                updateCmdOutput(`  (empty)`);
+            } else {
+                sortedItems.forEach(item => {
+                    const icon = item.type === 'folder' ? '📁' : getFileIcon(item.name);
+                    updateCmdOutput(`  ${icon} ${item.name}${item.type === 'folder' ? '/' : ''}`);
+                });
+            }
+        }
+
+        // Cmd specific function to view file content
+        function viewFileContent(filePath) {
+            const fullPath = normalizePath(OS.currentDirectory + '/' + filePath);
+            const file = OS.files.get(fullPath);
+
+            if (file && file.type !== 'folder') {
+                updateCmdOutput(`--- Content of ${file.name} ---`);
+                updateCmdOutput(file.content || ' (Empty file) ');
+                updateCmdOutput(`--- End of file ---`);
+            } else if (file && file.type === 'folder') {
+                updateCmdOutput(`cat: Is a directory: ${filePath}`, true);
+            }
+            else {
+                updateCmdOutput(`cat: No such file: ${filePath}`, true);
+            }
+        }
+
+
+        // Calculator App
+        let calculatorDisplay = '0';
+        let currentInput = '';
+        let operator = null;
+        let prevValue = null;
+        let variables = new Map(); // Store variables (e.g., { ans: lastResult })
+
+        function createCalculatorContent() {
+            return `
+                <div class="calculator-app">
+                    <h2>🔢 Calculator</h2>
+                    <div id="calculator-display">0</div>
+                    <div class="calculator-buttons">
+                        <button onclick="clearDisplay()" class="clear">C</button>
+                        <button onclick="backspace()">⌫</button>
+                        <button onclick="appendToDisplay('%')" class="operator">%</button>
+                        <button onclick="appendToDisplay('/')" class="operator">÷</button>
+
+                        <button onclick="appendToDisplay('7')">7</button>
+                        <button onclick="appendToDisplay('8')">8</button>
+                        <button onclick="appendToDisplay('9')">9</button>
+                        <button onclick="appendToDisplay('*')" class="operator">×</button>
+
+                        <button onclick="appendToDisplay('4')">4</button>
+                        <button onclick="appendToDisplay('5')">5</button>
+                        <button onclick="appendToDisplay('6')">6</button>
+                        <button onclick="appendToDisplay('-')" class="operator">−</button>
+
+                        <button onclick="appendToDisplay('1')">1</button>
+                        <button onclick="appendToDisplay('2')">2</button>
+                        <button onclick="appendToDisplay('3')">3</button>
+                        <button onclick="appendToDisplay('+')" class="operator">+</button>
+
+                        <button onclick="appendToDisplay('0')">0</button>
+                        <button onclick="appendToDisplay('.')">.</button>
+                        <button onclick="calculateResult()" class="equals">=</button>
+                        <button onclick="applyFunction('sqrt')">√</button>
+                        <button onclick="applyFunction('sin')">sin</button>
+                        <button onclick="applyFunction('cos')">cos</button>
+                        <button onclick="applyFunction('tan')">tan</button>
+                        <button onclick="applyFunction('log')">log</button>
+                        <button onclick="applyFunction('ln')">ln</button>
+                        <button onclick="applyFunction('pow2')">x²</button>
+                        <button onclick="applyFunction('pow3')">x³</button>
+                        <button onclick="applyFunction('abs')">|x|</button>
+                        <button onclick="appendToDisplay('pi')">π</button>
+                        <button onclick="appendToDisplay('e')">e</button>
+                        <button onclick="setVariable()">Var =</button>
+                        <button onclick="getVariable()">Ans</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateCalculatorDisplay() {
+            const displayElement = document.getElementById('calculator-display');
+            if (displayElement) {
+                displayElement.textContent = calculatorDisplay;
+            }
+        }
+
+        function appendToDisplay(val) {
+            if (calculatorDisplay === '0' && val !== '.') {
+                calculatorDisplay = val;
+            } else {
+                calculatorDisplay += val;
+            }
+            currentInput += val;
+            updateCalculatorDisplay();
+        }
+
+        function clearDisplay() {
+            calculatorDisplay = '0';
+            currentInput = '';
+            operator = null;
+            prevValue = null;
+            updateCalculatorDisplay();
+        }
+
+        function backspace() {
+            calculatorDisplay = calculatorDisplay.slice(0, -1);
+            if (calculatorDisplay === '') {
+                calculatorDisplay = '0';
+            }
+            currentInput = currentInput.slice(0, -1);
+            updateCalculatorDisplay();
+        }
+
+        function calculateResult() {
+            try {
+                // Replace constants
+                let expression = calculatorDisplay.replace(/pi/g, Math.PI).replace(/e/g, Math.E);
+                
+                // Evaluate variables
+                variables.forEach((value, key) => {
+                    expression = expression.replace(new RegExp(key, 'g'), `(${value})`);
+                });
+
+                // Simple evaluation (be cautious with eval for security in real apps)
+                const result = eval(expression.replace('×', '*').replace('÷', '/'));
+                calculatorDisplay = result.toString();
+                variables.set('ans', result); // Store answer in 'ans' variable
+            } catch (e) {
+                calculatorDisplay = 'Error';
+            }
+            currentInput = '';
+            updateCalculatorDisplay();
+        }
+
+        function applyFunction(func) {
+            try {
+                let value = parseFloat(currentInput) || parseFloat(calculatorDisplay);
+                if (isNaN(value)) {
+                    calculatorDisplay = 'Error';
+                    updateCalculatorDisplay();
+                    return;
+                }
+
+                let result;
+                switch (func) {
+                    case 'sqrt': result = Math.sqrt(value); break;
+                    case 'sin': result = Math.sin(value * (Math.PI / 180)); break; // Assume degrees
+                    case 'cos': result = Math.cos(value * (Math.PI / 180)); break; // Assume degrees
+                    case 'tan': result = Math.tan(value * (Math.PI / 180)); break; // Assume degrees
+                    case 'log': result = Math.log10(value); break;
+                    case 'ln': result = Math.log(value); break;
+                    case 'pow2': result = Math.pow(value, 2); break;
+                    case 'pow3': result = Math.pow(value, 3); break;
+                    case 'abs': result = Math.abs(value); break;
+                    default: return;
+                }
+                calculatorDisplay = result.toString();
+                currentInput = result.toString();
+            } catch (e) {
+                calculatorDisplay = 'Error';
+            }
+            updateCalculatorDisplay();
+        }
+
+        function setVariable() {
+            showPrompt('Set Variable', 'Enter variable name and value (e.g., x = 10):', '', (input) => {
+                if (input !== null) {
+                    const parts = input.split('=');
+                    if (parts.length === 2) {
+                        const varName = parts[0].trim();
+                        const varValue = parseFloat(parts[1].trim());
+                        if (varName && !isNaN(varValue)) {
+                            variables.set(varName, varValue);
+                            updateCalculatorDisplay(); // Refresh display
+                            showAlert('Variable Set', `Variable '${varName}' set to ${varValue}`);
+                        } else {
+                            showAlert('Invalid Input', 'Invalid input. Use format: var = value');
+                        }
+                    } else {
+                        showAlert('Invalid Input', 'Invalid input. Use format: var = value');
+                    }
+                }
+            });
+        }
+
+        function getVariable() {
+            const ansValue = variables.get('ans');
+            if (ansValue !== undefined) {
+                calculatorDisplay = ansValue.toString();
+                currentInput = ansValue.toString();
+            } else {
+                showAlert('No Saved Answer', 'No answer saved in "ans" variable.');
+                calculatorDisplay = '0';
+            }
+            updateCalculatorDisplay();
+        }
+
+
+        // Notepad App (reusing HTML Editor for core functionality, adding UI and features)
+        function createNotepadContent() {
+            return `
+                <div class="notepad-app ${OS.settings.notepadSexyUI ? 'sexy-ui' : ''}">
+                    <div class="notepad-toolbar">
+                        <button class="toolbar-btn" onclick="saveFile(currentNotepadFileName)">💾 Save</button>
+                        <button class="toolbar-btn" onclick="openNewNotepadFile()">📄 New</button>
+                        <button class="toolbar-btn" id="notepadRunPreviewButton" onclick="handleNotepadRunPreview()">👁️ Preview</button>
+                        <button class="toolbar-btn" onclick="installAsApp(currentNotepadFileName)">📱 Install as App</button>
+                        <select id="notepadModeSelect" onchange="changeNotepadMode()">
+                            <option value="htmlmixed">HTML/XML</option>
+                            <option value="css">CSS</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="python">Python</option>
+                            <option value="clike">C/C++/Java</option>
+                            <option value="markdown">Markdown</option>
+                            <option value="null">Plain Text</option>
+                        </select>
+                        <select id="notepadThemeSelect" onchange="changeNotepadTheme()">
+                            <option value="dracula">Dracula</option>
+                            <option value="material">Material</option>
+                            </select>
+                        </select>
+                        <button class="toolbar-btn" onclick="toggleSexyUIMode()">✨ Toggle Sexy UI</button>
+                    </div>
+                    <div class="notepad-editor-container">
+                        <div id="notepad-editor-main-container" class="codemirror-container"></div>
+                        <iframe id="preview-notepad-editor" class="preview-frame" style="display:none;"></iframe>
+                        <div id="notepad-python-output" style="display:none;"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function openNewNotepadFile() {
+             showConfirm('Create a new blank document? Any unsaved changes in the current Notepad may be lost.', (confirmed) => {
+                if (confirmed) {
+                    currentNotepadFileName = null; // Mark as a new, unsaved file
+                    // Reset to default mode when creating a new file
+                    initializeNotepadEditor('', OS.settings.notepadMode, false); // Not in Python mode
+                    const notepadWindow = document.querySelector('.notepad-app').closest('.window');
+                    if (notepadWindow) {
+                        const titleSpan = notepadWindow.querySelector('.window-title span:last-child');
+                        if (titleSpan) titleSpan.textContent = '📝 Untitled';
+                    }
+                    // Hide preview/python output when opening new file
+                    toggleNotepadOutputDisplay('none');
+                }
+             });
+        }
+
+        // Centralized function to initialize the Notepad CodeMirror editor
+        function initializeNotepadEditor(content, mode = 'null', isPythonMode = false) {
+            const editorContainer = document.getElementById('notepad-editor-main-container');
+            const notepadApp = document.querySelector('.notepad-app');
+            const previewFrame = document.getElementById('preview-notepad-editor');
+            const pythonOutputDiv = document.getElementById('notepad-python-output');
+            const runPreviewButton = document.getElementById('notepadRunPreviewButton');
+
+            if (!editorContainer || !notepadApp || !runPreviewButton) {
+                console.error("Missing Notepad UI elements for initialization.");
+                return;
+            }
+
+            // Clear any existing editor instance in the container
+            editorContainer.innerHTML = ''; 
+            currentCodeMirrorEditor = CodeMirror(editorContainer, {
+                value: content,
+                mode: mode,
+                theme: OS.settings.notepadTheme, // Use saved theme
+                lineNumbers: true,
+                autoCloseTags: true,
+                autoCloseBrackets: true,
+                matchBrackets: true,
+                indentUnit: 4,
+                tabSize: 4,
+                indentWithTabs: false,
+                lineWrapping: true,
+            });
+            currentCodeMirrorEditor.refresh();
+
+            // Set selected values in dropdowns
+            const modeSelect = document.getElementById('notepadModeSelect');
+            if (modeSelect) modeSelect.value = mode; 
+            const themeSelect = document.getElementById('notepadThemeSelect');
+            if (themeSelect) themeSelect.value = OS.settings.notepadTheme;
+
+            // Toggle Notepad UI elements based on Python mode
+            if (isPythonMode) {
+                notepadApp.classList.add('python-mode-active');
+                runPreviewButton.textContent = '▶️ Run Code';
+                runPreviewButton.onclick = runPythonCodeInNotepad;
+                toggleNotepadOutputDisplay('python-output'); // Show Python output
+                loadPyodideInstance(); // Ensure Pyodide is loaded
+            } else {
+                notepadApp.classList.remove('python-mode-active');
+                runPreviewButton.textContent = '👁️ Preview';
+                runPreviewButton.onclick = () => previewFile(currentNotepadFileName);
+                toggleNotepadOutputDisplay('none'); // Hide all output/preview
+            }
+            
+            // Adjust editor height based on output area visibility
+            if (isPythonMode) {
+                editorContainer.style.height = 'calc(100% - 150px - 10px)'; // Full height minus output and margin
+            } else if (previewFrame && previewFrame.style.display !== 'none') {
+                editorContainer.style.height = 'calc(50% - 15px)'; // Full height minus preview and margin
+            } else {
+                editorContainer.style.height = '100%';
+            }
+            currentCodeMirrorEditor.refresh(); // Refresh editor after height change
+
+            // Implement symbol replacement on change
+            currentCodeMirrorEditor.on('change', (instance, change) => {
+                if (change.origin === '+input') {
+                    const lastChar = instance.getRange({ line: change.from.line, ch: change.from.ch - 1 }, change.from);
+                    if (lastChar === ')') {
+                        const line = instance.getLine(change.from.line);
+                        const match = line.match(/\(c\)$/); // Look for (c) at the end of the line
+                        if (match) {
+                            const start = { line: change.from.line, ch: change.from.ch - 3 }; // Position of (c)
+                            instance.replaceRange('©', start, change.from);
+                        }
+                        // Add more symbol replacements here: (tm) -> ™, (r) -> ® etc.
+                        const matchTm = line.match(/\(tm\)$/i);
+                        if (matchTm) {
+                            const start = { line: change.from.line, ch: change.from.ch - 4 };
+                            instance.replaceRange('™', start, change.from);
+                        }
+                        const matchR = line.match(/\(r\)$/i);
+                        if (matchR) {
+                            const start = { line: change.from.line, ch: change.from.ch - 3 };
+                            instance.replaceRange('®', start, change.from);
+                        }
+                    }
+                }
+            });
+        }
+
+        // Helper to toggle display of preview/python output and manage editor height
+        function toggleNotepadOutputDisplay(mode) {
+            const previewFrame = document.getElementById('preview-notepad-editor');
+            const pythonOutputDiv = document.getElementById('notepad-python-output');
+            const editorContainer = document.getElementById('notepad-editor-main-container');
+
+            if (!previewFrame || !pythonOutputDiv || !editorContainer) return;
+
+            // Hide all first
+            previewFrame.style.display = 'none';
+            pythonOutputDiv.style.display = 'none';
+            editorContainer.style.height = '100%'; // Default to full height
+
+            // Revoke blob URL if active
+            if (previewFrame.src.startsWith('blob:')) {
+                URL.revokeObjectURL(previewFrame.src);
+                previewFrame.removeAttribute('src');
+                previewFrame.removeAttribute('sandbox');
+            }
+            
+            // Show based on mode
+            if (mode === 'preview') {
+                previewFrame.style.display = 'block';
+                editorContainer.style.height = 'calc(50% - 15px)';
+            } else if (mode === 'python-output') {
+                pythonOutputDiv.innerHTML = ''; // Clear output on switch
+                pythonOutputDiv.style.display = 'block';
+                editorContainer.style.height = 'calc(100% - 150px - 10px)'; // Editor height adjusted for 150px output + 10px margin
+            }
+
+            if (currentCodeMirrorEditor) {
+                currentCodeMirrorEditor.refresh();
+            }
+        }
+
+        function changeNotepadMode() {
+            if (currentCodeMirrorEditor) {
+                const newMode = document.getElementById('notepadModeSelect').value;
+                currentCodeMirrorEditor.setOption('mode', newMode);
+                OS.settings.notepadMode = newMode;
+                saveSettings(); 
+
+                const isPython = (newMode === 'python');
+                initializeNotepadEditor(currentCodeMirrorEditor.getValue(), newMode, isPython);
+            }
+        }
+
+        function changeNotepadTheme() {
+            if (currentCodeMirrorEditor) {
+                const newTheme = document.getElementById('notepadThemeSelect').value;
+                currentCodeMirrorEditor.setOption('theme', newTheme);
+                OS.settings.notepadTheme = newTheme;
+                saveSettings(); 
+            }
+        }
+
+        function toggleSexyUIMode() {
+            OS.settings.notepadSexyUI = !OS.settings.notepadSexyUI;
+            saveSettings(); 
+            // Re-apply style to the current Notepad window
+            const notepadAppElement = document.querySelector('.notepad-app');
+            if (notepadAppElement) {
+                if (OS.settings.notepadSexyUI) {
+                    notepadAppElement.classList.add('sexy-ui');
+                } else {
+                    notepadAppElement.classList.remove('sexy-ui');
+                }
+            }
+            // Refresh CodeMirror to recalculate layout
+            if (currentCodeMirrorEditor) {
+                currentCodeMirrorEditor.refresh();
+            }
+        }
+
+        function saveFile(fullPath) {
+            // If it's a new notepad document (no currentNotepadFileName) or an explicit save for a new file
+            if (!fullPath) { // This means it's an unsaved 'New' document
+                showPrompt('Save New File', 'Enter filename (e.g., my_notes.txt):', '', (fileName) => {
+                    if (fileName && fileName.trim()) {
+                        const newFullPath = normalizePath(OS.currentDirectory + '/' + fileName.trim());
+                        if (OS.files.has(newFullPath)) {
+                            showAlert('Error', `File '${newFullPath}' already exists.`);
+                            return;
+                        }
+                        const content = currentCodeMirrorEditor ? currentCodeMirrorEditor.getValue() : '';
+                        OS.files.set(newFullPath, {
+                            name: fileName.trim(), // Add name property
+                            content: content,
+                            modified: Date.now(),
+                            type: getMimeType(fileName.split('.').pop()) // Determine type based on extension
+                        });
+                        saveFiles(); 
+                        updateFileList();
+                        showAlert('Success', 'File saved successfully!');
+                        // Update the window title to reflect the new file name
+                        const notepadWindow = document.querySelector('.notepad-app').closest('.window');
+                        if (notepadWindow) {
+                            const titleSpan = notepadWindow.querySelector('.window-title span:last-child');
+                            if (titleSpan) titleSpan.textContent = `📝 ${fileName.trim()}`;
+                        }
+                        currentNotepadFileName = newFullPath; // Update global state
+                    } else {
+                        showAlert('Error', 'Filename cannot be empty.');
+                    }
+                });
+                return;
+            }
+
+            // Otherwise, save existing file
+            if (currentCodeMirrorEditor) {
+                const content = currentCodeMirrorEditor.getValue();
+                const fileToSavePath = currentNotepadFileName || fullPath; // Prioritize current open file, fallback to argument
+                if (fileToSavePath) {
+                    // Ensure the 'name' property is also updated or retained
+                    const existingFileData = OS.files.get(fileToSavePath) || {};
+                    OS.files.set(fileToSavePath, {
+                        ...existingFileData, // Keep existing properties
+                        content: content,
+                        modified: Date.now(),
+                        type: existingFileData.type || getMimeType(fileToSavePath.split('.').pop())
+                    });
+                    saveFiles(); 
+                    updateFileList();
+                    showAlert('Success', 'File saved successfully!');
+                } else {
+                    showAlert('Error', 'No file specified to save.');
+                }
+            } else {
+                console.error('CodeMirror editor not initialized.');
+                showAlert('Error', 'Text editor not active.');
+            }
+        }
+
+        function handleNotepadRunPreview() {
+            const notepadApp = document.querySelector('.notepad-app');
+            if (notepadApp && notepadApp.classList.contains('python-mode-active')) {
+                runPythonCodeInNotepad();
+            } else {
+                previewFile(currentNotepadFileName);
+            }
+        }
+
+        function previewFile(fullPath) {
+            // Use a consistent ID for the preview iframe in Notepad
+            const preview = document.getElementById(`preview-notepad-editor`);
+            
+            if (currentCodeMirrorEditor && preview) {
+                if (preview.style.display === 'none') {
+                    const content = currentCodeMirrorEditor.getValue();
+                    const blob = new Blob([content], { type: 'text/html' });
+                    preview.src = URL.createObjectURL(blob);
+                    // Keep sandbox for preview as it's user-generated content
+                    preview.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+                    toggleNotepadOutputDisplay('preview'); // Show preview
+                } else {
+                    toggleNotepadOutputDisplay('none'); // Hide preview
+                }
+            } else {
+                console.error('CodeMirror editor or preview frame not found.');
+                showAlert('Error', 'Could not find active editor or preview frame.');
+            }
+        }
+
+        function installAsApp(fullPath) {
+            if (!currentCodeMirrorEditor) {
+                console.error('CodeMirror editor not initialized.');
+                showAlert('Error', 'Text editor not active.');
+                return;
+            }
+            if (!fullPath) {
+                showAlert('Error', 'Please save the file before installing it as an app.');
+                return;
+            }
+
+            const content = currentCodeMirrorEditor.getValue();
+            const fileName = fullPath.split('/').pop();
+            const appName = fileName.replace(/\.(html|htm)$/i, ''); // Remove .html/.htm extension
+            const appId = generateAppId(appName);
+
+            if (OS.installedApps.has(appId)) {
+                showConfirm(`An app with the name "${appName}" already exists. Do you want to update it?`, (confirmed) => {
+                    if (confirmed) {
+                        const existingApp = OS.installedApps.get(appId);
+                        existingApp.htmlContent = content;
+                        OS.installedApps.set(appId, existingApp);
+                        saveInstalledApps(); 
+                        updateDesktopIcons();
+                        showAlert('Update Complete', `${appName} app updated successfully!`);
+                    }
+                });
+            } else {
+                showPrompt('Install as App', 'Choose an emoji for your app:', '⭐', (emoji) => {
+                    if (emoji && emoji.trim()) {
+                        const app = {
+                            id: appId,
+                            name: appName,
+                            emoji: emoji.trim() || '⭐',
+                            description: `Custom HTML app: ${appName}`,
+                            htmlContent: content,
+                            type: 'custom'
+                        };
+
+                        OS.installedApps.set(appId, app);
+                        saveInstalledApps(); 
+                        updateDesktopIcons();
+                        showAlert('Installation Complete', `${appName} has been installed as an app!`);
+                    } else {
+                        showAlert('Error', 'Emoji cannot be empty.');
+                    }
+                });
+            }
+        }
+
+        // Modal functionality (modified to accept custom innerHTML for message)
+        // Added 'showOkOnly' parameter: if true, only an OK button appears.
+        // Added 'expectsTextValue' parameter: if true, the callback will receive the input value, otherwise true/false for OK/Cancel.
+        function showModal(title, message, defaultValueOrHtml, callback, isHtmlContent = false, showOkOnly = false, expectsTextValue = false) {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-title">${title}</div>
+                    <div id="modal-message-area">${isHtmlContent ? defaultValueOrHtml : `<p>${message}</p>`}</div>
+                    ${expectsTextValue ? `<input type="text" class="modal-input" value="${defaultValueOrHtml}" id="modal-input">` : ''}
+                    <div class="modal-buttons">
+                        ${showOkOnly ? '' : '<button class="modal-btn secondary" onclick="closeModal(false)">Cancel</button>'}
+                        <button class="modal-btn primary" onclick="confirmModal()">OK</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Store callback and whether it expects input.
+            // For showOkOnly, callback will be called with 'true' on OK, 'false' on Cancel (if present)
+            window.modalCallback = {
+                callback: callback,
+                expectsTextValue: expectsTextValue // This flag now explicitly means 'expect a text value from the input field'
+            };
+
+            setTimeout(() => {
+                const input = document.getElementById('modal-input');
+                if (input) {
+                    input.focus();
+                    input.select();
+                    
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            confirmModal();
+                        } else if (e.key === 'Escape') {
+                            closeModal(false); // Pass false for cancel
+                        }
+                    });
+                } else if (modal.querySelector('.modal-btn.primary')) {
+                    // If no input, focus the OK button for easier interaction
+                    modal.querySelector('.modal-btn.primary').focus();
+                }
+            }, 100);
+        }
+
+        // Modified closeModal to pass a result to the callback
+        function closeModal(result = false) { // Default result for cancellation
+            const modal = document.querySelector('.modal');
+            if (modal) {
+                modal.remove();
+            }
+            if (window.modalCallback && typeof window.modalCallback.callback === 'function') {
+                // If it expects a text value, pass null for cancel. Otherwise, pass the boolean result.
+                window.modalCallback.callback(window.modalCallback.expectsTextValue ? (modal.querySelector('#modal-input') ? modal.querySelector('#modal-input').value : null) : result); 
+            }
+            window.modalCallback = null;
+        }
+
+        function confirmModal() {
+            const input = document.getElementById('modal-input');
+            const callbackData = window.modalCallback;
+            
+            if (callbackData && typeof callbackData.callback === 'function') {
+                // If it expects a text value, pass its value (or null if input doesn't exist). Otherwise, signal confirmation (true).
+                callbackData.callback(callbackData.expectsTextValue ? (input ? input.value : null) : true); 
+            }
+            
+            closeModal(true); // Always close, pass true for confirmation
+        }
+
+        // Simplified alert/prompt/confirm functions using the new showModal structure
+        function showAlert(message, title = 'Alert', callback = null) {
+            showModal(title, message, '', callback, false, true, false); // No input, OK only, no text value expected
+        }
+
+        function showPrompt(title, message, defaultValue = '', callback, isHtmlContent = false) {
+            // For showPrompt, expectsTextValue is always true unless explicitly told otherwise for custom HTML content
+            showModal(title, message, defaultValue, callback, isHtmlContent, false, !isHtmlContent); 
+        }
+
+        function showConfirm(message, callback, title = 'Confirm') {
+            showModal(title, message, '', callback, false, false, false); // No input, OK/Cancel, no text value expected
+        }
+
+        // Start menu (placeholder for future enhancement)
+        function showStartMenu() {
+            // For now, just launch the app store
+            launchApp('app-store');
+        }
+
+        // Initialize the OS when page loads
+        window.addEventListener('load', initOS);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            updateDesktopIcons();
+            // Refresh CodeMirror editor if open to handle resize
+            if (currentCodeMirrorEditor) {
+                currentCodeMirrorEditor.refresh();
+            }
+        });
+
+        // New helper function to ensure Pyodide is loaded
+        async function loadPyodideInstance() {
+            if (!pyodidePromise) {
+                console.log("Pyodide: Initializing Pyodide for the first time...");
+                pyodidePromise = loadPyodide({
+                    indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/",
+                    stdout: (text) => pythonOutput(text, false, getCurrentPythonOutputTarget()),
+                    stderr: (text) => pythonOutput(text, true, getCurrentPythonOutputTarget()),
+                }).then(async (instance) => {
+                    pyodide = instance;
+                    await pyodide.loadPackage("micropip");
+                    pythonOutput("Pyodide and micropip loaded. Packages installed via 'pip install' will persist for this session.", false, getCurrentPythonOutputTarget());
+                    return pyodide;
+                }).catch(error => {
+                    pythonOutput(`Error loading Pyodide: ${error}`, true, getCurrentPythonOutputTarget());
+                    console.error("Error loading Pyodide:", error);
+                    pyodidePromise = null; // Allow retrying load
+                });
+            } else {
+                console.log("Pyodide: Pyodide already initiated, reusing existing instance.");
+            }
+            return pyodidePromise;
+        }
+
+        // Function to run Python code from Notepad
+        async function runPythonCodeInNotepad() {
+            const outputElement = document.getElementById('notepad-python-output');
+            if (!outputElement) {
+                showAlert('Error', 'Python output area not found in Notepad.');
+                return;
+            }
+
+            outputElement.innerHTML = ''; // Clear previous output
+            pythonOutput("Running Python code...", false, 'notepad-python-output');
+
+            try {
+                await loadPyodideInstance(); // Ensure Pyodide is ready
+                if (!pyodide) {
+                    pythonOutput("Pyodide is not loaded. Please wait or refresh the app.", true, 'notepad-python-output');
+                    return;
+                }
+
+                const code = currentCodeMirrorEditor.getValue();
+                const result = await pyodide.runPythonAsync(code);
+                if (result !== undefined) {
+                    pythonOutput(`Result: ${result}`, false, 'notepad-python-output');
+                }
+            } catch (error) {
+                pythonOutput(`Error during execution: ${error.message || error}`, true, 'notepad-python-output');
+                console.error("Python execution error:", error);
+            }
+        }
+
+        // Function to install Python package from CMD
+        async function installPythonPackageFromCmd(packageName) {
+            updateCmdOutput(`Attempting to install package: ${packageName}...`);
+
+            try {
+                await loadPyodideInstance(); // Ensure Pyodide is ready
+                if (!pyodide) {
+                    updateCmdOutput("Pyodide is not loaded. Cannot install packages.", true);
+                    return;
+                }
+
+                await pyodide.runPythonAsync(`
+                    import micropip
+                    await micropip.install('${packageName}')
+                `);
+                updateCmdOutput(`Successfully installed ${packageName}.`);
+            } catch (error) {
+                updateCmdOutput(`Error installing ${packageName}: ${error.message || error}`, true);
+                console.error("Package installation error:", error);
+            }
+        }
+
+    </script>
+</body>
+</html>
