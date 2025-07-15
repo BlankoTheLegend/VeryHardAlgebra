@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VeryHardAlgebra</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- PWA install support -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+
+  <!-- Basic styling -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
+    iframe {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      border: none;
+    }
+  </style>
+</head>
+
+<body>
+  <iframe id="content-frame"
+          sandbox="allow-scripts allow-forms allow-same-origin">
+  </iframe>
+
+  <script>
+    const RAW_URL = 'https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/Curtains.html';
+    const STORAGE_KEY = 'cachedHtmlContent';
+    const iframe = document.getElementById('content-frame');
+
+    async function loadContent() {
+      try {
+        const response = await fetch(RAW_URL, { cache: 'no-store' });
+        if (!response.ok) throw new Error('Fetch failed');
+        const html = await response.text();
+        localStorage.setItem(STORAGE_KEY, html);
+        iframe.srcdoc = html;
+        console.log('✅ Loaded fresh from GitHub');
+      } catch (err) {
+        console.warn('⚠️ Could not fetch latest. Trying localStorage...');
+        const cached = localStorage.getItem(STORAGE_KEY);
+        if (cached) {
+          iframe.srcdoc = cached;
+          console.log('✅ Loaded from localStorage');
+        } else {
+          console.warn('❌ Nothing in localStorage. Using bundled fallback.');
+          iframe.src = '/fallback.html';
+        }
+      }
+    }
+
+    loadContent();
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(() => console.log('🛡️ Service worker registered'))
+        .catch(err => console.error('❌ SW registration failed:', err));
+    }
+  </script>
+</body>
+</html>
