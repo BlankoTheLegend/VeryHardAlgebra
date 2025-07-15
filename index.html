@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VeryHardAlgebra</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- PWA install support -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+
+  <!-- Basic styling -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      font-family: sans-serif;
+      background-color: #f0f0f0;
+    }
+
+    #login-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background-color: #f8f8f8;
+    }
+
+    #login-form {
+      padding: 20px;
+      border: 1px solid #ccc;
+      background: white;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      border-radius: 8px;
+    }
+
+    #login-form input {
+      margin: 10px 0;
+      padding: 10px;
+      width: 200px;
+    }
+
+    #login-form button {
+      padding: 10px 20px;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    iframe {
+      display: none;
+      width: 100vw;
+      height: 100vh;
+      border: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="login-container">
+    <form id="login-form">
+      <h2>Login Required</h2>
+      <input type="text" id="username" placeholder="Username" required><br>
+      <input type="password" id="password" placeholder="Password" required><br>
+      <button type="submit">Login</button>
+      <p id="login-status" style="color:red;"></p>
+    </form>
+  </div>
+
+  <iframe id="content-frame" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
+
+  <script>
+    const LOGIN_URL = 'https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/indicators.json';
+    const RAW_URL = 'https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/Curtains.html';
+    const STORAGE_KEY = 'cachedHtmlContent';
+    const iframe = document.getElementById('content-frame');
+    const loginForm = document.getElementById('login-form');
+    const loginStatus = document.getElementById('login-status');
+
+    loginForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      try {
+        const res = await fetch(LOGIN_URL, { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to fetch credentials');
+        const data = await res.json();
+
+        const user = data.users.find(u => u.username === username && u.password === password);
+
+        if (user) {
+          document.getElementById('login-container').style.display = 'none';
+          iframe.style.display = 'block';
+          loadContent();
+        } else {
+          loginStatus.textContent = 'Invalid username or password.';
+        }
+      } catch (err) {
+        loginStatus.textContent = 'Error loading credentials.';
+        console.error(err);
+      }
+    });
+
+    async function loadContent() {
+      try {
+        const response = await fetch(RAW_URL, { cache: 'no-store' });
+        if (!response.ok) throw new Error('Fetch failed');
+        const html = await response.text();
+        localStorage.setItem(STORAGE_KEY, html);
+        iframe.srcdoc = html;
+        console.log('✅ Loaded fresh from GitHub');
+      } catch (err) {
+        console.warn('⚠️ Could not fetch latest. Trying localStorage...');
+        const cached = localStorage.getItem(STORAGE_KEY);
+        if (cached) {
+          iframe.srcdoc = cached;
+          console.log('✅ Loaded from localStorage');
+        } else {
+          console.warn('❌ Nothing in localStorage. Using bundled fallback.');
+          iframe.src = '/fallback.html';
+        }
+      }
+    }
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(() => console.log('🛡️ Service worker registered'))
+        .catch(err => console.error('❌ SW registration failed:', err));
+    }
+  </script>
+</body>
+</html>
