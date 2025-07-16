@@ -80,12 +80,43 @@
   <script>
     const LOGIN_URL = 'https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/indicators.json';
     const RAW_URL = 'https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/Curtains.html';
-    const STORAGE_KEY = 'cachedHtmlContent';
     const iframe = document.getElementById('content-frame');
     const loginForm = document.getElementById('login-form');
     const loginStatus = document.getElementById('login-status');
 
-    // Auto-login if previously authenticated
+    // IndexedDB helpers
+    function openDatabase() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open('VeryHardAlgebraDB', 1);
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          db.createObjectStore('htmlCache');
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    function saveHtmlToDB(html) {
+      return openDatabase().then(db => {
+        const tx = db.transaction('htmlCache', 'readwrite');
+        tx.objectStore('htmlCache').put(html, 'Curtains');
+        return tx.complete || new Promise(res => tx.oncomplete = res);
+      });
+    }
+
+    function loadHtmlFromDB() {
+      return openDatabase().then(db => {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('htmlCache', 'readonly');
+          const req = tx.objectStore('htmlCache').get('Curtains');
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      });
+    }
+
+    // Auto-login if already authenticated
     if (localStorage.getItem('isLoggedIn') === 'true') {
       document.getElementById('login-container').style.display = 'none';
       iframe.style.display = 'block';
@@ -123,17 +154,21 @@
         const response = await fetch(RAW_URL, { cache: 'no-store' });
         if (!response.ok) throw new Error('Fetch failed');
         const html = await response.text();
-        localStorage.setItem(STORAGE_KEY, html);
+        await saveHtmlToDB(html);
         iframe.srcdoc = html;
-        console.log('✅ Loaded fresh from GitHub and cached');
+        console.log('✅ Loaded fresh from GitHub and saved to IndexedDB');
       } catch (err) {
-        console.warn('⚠️ Could not fetch latest. Trying localStorage...');
-        const cached = localStorage.getItem(STORAGE_KEY);
-        if (cached) {
-          iframe.srcdoc = cached;
-          console.log('✅ Loaded from localStorage (offline mode)');
-        } else {
-          console.warn('❌ Nothing in localStorage. Using fallback.');
+        console.warn('⚠️ Could not fetch latest. Trying IndexedDB...');
+        try {
+          const cached = await loadHtmlFromDB();
+          if (cached) {
+            iframe.srcdoc = cached;
+            console.log('✅ Loaded from IndexedDB (offline mode)');
+          } else {
+            throw new Error('No content in IndexedDB');
+          }
+        } catch (err2) {
+          console.warn('❌ IndexedDB failed or empty. Using fallback.');
           iframe.src = '/fallback.html';
         }
       }
