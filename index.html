@@ -56,20 +56,6 @@
       cursor: pointer;
     }
 
-    #logout-button {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      padding: 8px 12px;
-      font-size: 14px;
-      background-color: #d9534f;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      display: none;
-    }
-
     iframe {
       display: none;
       width: 100vw;
@@ -80,8 +66,6 @@
 </head>
 
 <body>
-  <button id="logout-button" onclick="logout()">Logout</button>
-
   <div id="login-container">
     <form id="login-form">
       <h2>Login Required</h2>
@@ -101,13 +85,11 @@
     const iframe = document.getElementById('content-frame');
     const loginForm = document.getElementById('login-form');
     const loginStatus = document.getElementById('login-status');
-    const logoutButton = document.getElementById('logout-button');
 
     // Auto-login if previously authenticated
     if (localStorage.getItem('isLoggedIn') === 'true') {
       document.getElementById('login-container').style.display = 'none';
       iframe.style.display = 'block';
-      logoutButton.style.display = 'block';
       loadContent();
     }
 
@@ -127,7 +109,6 @@
           localStorage.setItem('isLoggedIn', 'true');
           document.getElementById('login-container').style.display = 'none';
           iframe.style.display = 'block';
-          logoutButton.style.display = 'block';
           loadContent();
         } else {
           loginStatus.textContent = 'Invalid username or password.';
@@ -137,12 +118,6 @@
         console.error(err);
       }
     });
-
-    function logout() {
-      localStorage.removeItem('isLoggedIn');
-      localStorage.removeItem(STORAGE_KEY);
-      location.reload();
-    }
 
     async function loadContent() {
       try {
