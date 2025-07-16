@@ -16,7 +16,6 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
-  <!-- Basic styling -->
   <style>
     html, body {
       margin: 0;
@@ -126,15 +125,15 @@
         const html = await response.text();
         localStorage.setItem(STORAGE_KEY, html);
         iframe.srcdoc = html;
-        console.log('✅ Loaded fresh from GitHub');
+        console.log('✅ Loaded fresh from GitHub and cached');
       } catch (err) {
         console.warn('⚠️ Could not fetch latest. Trying localStorage...');
         const cached = localStorage.getItem(STORAGE_KEY);
         if (cached) {
           iframe.srcdoc = cached;
-          console.log('✅ Loaded from localStorage');
+          console.log('✅ Loaded from localStorage (offline mode)');
         } else {
-          console.warn('❌ Nothing in localStorage. Using bundled fallback.');
+          console.warn('❌ Nothing in localStorage. Using fallback.');
           iframe.src = '/fallback.html';
         }
       }
