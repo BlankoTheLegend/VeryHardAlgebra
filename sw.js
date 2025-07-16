@@ -6,10 +6,15 @@ const FILES_TO_CACHE = [
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/apple-touch-icon-76x76.png',
+  '/apple-touch-icon-120x120.png',
+  '/apple-touch-icon-152x152.png',
+  '/apple-touch-icon-180x180.png',
   '/sw.js',
   '/Curtains.html'
 ];
 
+// rest of your SW code remains the same...
 // On install: cache essential files
 self.addEventListener('install', (event) => {
   console.log('[SW] Install');
