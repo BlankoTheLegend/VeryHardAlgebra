@@ -10,6 +10,7 @@ const FILES_TO_CACHE = [
   '/apple-touch-icon-120x120.png',
   '/apple-touch-icon-152x152.png',
   '/apple-touch-icon-180x180.png',
+  '/favicon.ico',
   '/sw.js',
   '/Curtains.html'
 ];
