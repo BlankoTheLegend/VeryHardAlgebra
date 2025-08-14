@@ -1,195 +1,162 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>VeryHardAlgebra</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- PWA support -->
-  <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#ffffff">
-  <link rel="apple-touch-icon" href="/icon-192.png">
-  <link rel="icon" type="image/x-icon" href="/favicon.ico">
-
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      width: 100%;
-      font-family: sans-serif;
-      background-color: #f0f0f0;
-    }
-    #login-container, #hub-container, #chat-container {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      width: 100%;
-    }
-    input {
-      padding: 10px;
-      margin: 5px;
-      font-size: 16px;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    iframe {
-      width: 100vw;
-      height: 100vh;
-      border: none;
-      display: none;
-    }
-    #messages {
-      border: 1px solid #ccc;
-      height: 300px;
-      overflow-y: scroll;
-      padding: 10px;
-      background: #f9f9f9;
-      width: 90%;
-      max-width: 600px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VeryHardAlgebra Hub</title>
+<style>
+body { font-family: Arial, margin: 0; padding: 20px; }
+#login-container, #hub-container, #chat-container { max-width: 500px; margin: auto; text-align: center; }
+#messages { border: 1px solid #ccc; height: 300px; overflow-y: scroll; padding: 10px; background: #f9f9f9; }
+input, button { width: 100%; margin: 5px 0; padding: 10px; box-sizing: border-box; }
+#status, #statusChat { margin-bottom: 10px; }
+iframe { width: 100%; height: 80vh; border: none; display: none; margin-top: 20px; }
+</style>
 </head>
 <body>
 
-  <!-- Master Password Login -->
-  <div id="login-container">
-    <h2>Login to VeryHardAlgebra</h2>
-    <input type="password" id="master-password" placeholder="Enter password">
-    <button onclick="checkMasterPassword()">Login</button>
-    <p id="error-message" style="color: red;"></p>
+<!-- Master Password Login -->
+<div id="login-container">
+  <h2>Login to VeryHardAlgebra</h2>
+  <input type="password" id="master-password" placeholder="Enter password">
+  <button onclick="checkMasterPassword()">Login</button>
+  <p id="error-message" style="color:red;"></p>
+</div>
+
+<!-- App Choice Hub -->
+<div id="hub-container" style="display:none;">
+  <h2>Choose App</h2>
+  <button onclick="loadCurtains()">Curtains</button>
+  <button onclick="loadChatApp()">Chat App</button>
+</div>
+
+<!-- Curtains iframe -->
+<iframe id="curtains-frame" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
+
+<!-- Chat App -->
+<div id="chat-container" style="display:none;">
+  <div id="loginDiv">
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+    <button id="loginBtn">Login</button>
+    <p id="loginStatus"></p>
+    <p id="status">Disconnected</p>
   </div>
 
-  <!-- Hub choice -->
-  <div id="hub-container" style="display:none;">
-    <h2>Choose App</h2>
-    <button onclick="loadCurtains()">Curtains</button>
-    <button onclick="loadChatApp()">Chat App</button>
+  <div id="chatDiv" style="display:none;">
+    <h2>Chat</h2>
+    <div id="messages"></div>
+    <input type="text" id="msgInput" placeholder="Type a message">
+    <button id="sendBtn">Send</button>
+    <p id="statusChat">Disconnected</p>
   </div>
-
-  <!-- Curtains iframe -->
-  <iframe id="curtains-frame" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
-
-  <!-- Chat App -->
-  <div id="chat-container" style="display:none; flex-direction: column; align-items: center;">
-    <div id="loginDiv">
-      <h2>Chat Login</h2>
-      <input type="text" id="chat-username" placeholder="Username">
-      <input type="password" id="chat-password" placeholder="Password">
-      <button id="loginBtn">Login</button>
-      <p id="loginStatus"></p>
-      <p id="status">Disconnected</p>
-    </div>
-
-    <div id="chatDiv" style="display:none; flex-direction: column; align-items: center;">
-      <h2>Chat</h2>
-      <div id="messages"></div>
-      <input type="text" id="msgInput" placeholder="Type a message">
-      <button id="sendBtn">Send</button>
-      <p id="statusChat">Disconnected</p>
-    </div>
-  </div>
+</div>
 
 <script>
-  // ---- Master password check ----
-  const loginContainer = document.getElementById('login-container');
-  const hubContainer = document.getElementById('hub-container');
-  const errorMessage = document.getElementById('error-message');
-  const masterPasswordInput = document.getElementById('master-password');
+// ---- Master password logic ----
+const loginContainer = document.getElementById('login-container');
+const hubContainer = document.getElementById('hub-container');
+const errorMessage = document.getElementById('error-message');
 
-  function checkMasterPassword() {
-    if(masterPasswordInput.value === 'SabrinaC') {
-      loginContainer.style.display = 'none';
-      hubContainer.style.display = 'flex';
-    } else {
-      errorMessage.textContent = 'Incorrect password. Please try again.';
-    }
+function checkMasterPassword() {
+  const pwd = document.getElementById('master-password').value;
+  if (pwd === 'SabrinaC') {
+    loginContainer.style.display = 'none';
+    hubContainer.style.display = 'block';
+  } else {
+    errorMessage.textContent = 'Incorrect password. Please try again.';
   }
+}
 
-  // ---- Load Curtains ----
-  const curtainsFrame = document.getElementById('curtains-frame');
-  const RAW_URL = 'https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/Curtains.html';
-  function loadCurtains() {
-    hubContainer.style.display = 'none';
-    curtainsFrame.style.display = 'block';
-    curtainsFrame.src = RAW_URL;
+// ---- Load Curtains ----
+const curtainsFrame = document.getElementById('curtains-frame');
+function loadCurtains() {
+  hubContainer.style.display = 'none';
+  curtainsFrame.style.display = 'block';
+  curtainsFrame.src = 'https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/Curtains.html';
+}
+
+// ---- Load Chat App ----
+const chatContainer = document.getElementById('chat-container');
+hubContainer.style.display = 'none';
+function loadChatApp() {
+  hubContainer.style.display = 'none';
+  curtainsFrame.style.display = 'none';
+  chatContainer.style.display = 'block';
+}
+
+// ---- Chat App logic (exactly your original script) ----
+let ws = null;
+let username = null;
+
+async function getServerURL() {
+  try {
+    const res = await fetch('https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/Key.txt');
+    return (await res.text()).trim();
+  } catch(e) {
+    alert('Failed to fetch chat server URL');
   }
+}
 
-  // ---- Load Chat App ----
-  const chatContainer = document.getElementById('chat-container');
-  function loadChatApp() {
-    hubContainer.style.display = 'none';
-    chatContainer.style.display = 'flex';
-  }
+async function initWebSocket() {
+  if (ws && ws.readyState === WebSocket.OPEN) return ws;
+  const serverURL = await getServerURL();
+  if (!serverURL) return;
+  ws = new WebSocket(serverURL);
 
-  // ---- Chat App Scripts ----
-  let ws = null;
-  let username = null;
+  ws.onopen = () => updateStatus('Connected');
+  ws.onclose = () => updateStatus('Disconnected');
+  ws.onerror = () => updateStatus('Error');
 
-  async function getServerURL() {
-    try {
-      const res = await fetch('https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/Key.txt');
-      return (await res.text()).trim();
-    } catch(e) {
-      alert('Failed to fetch chat server URL');
-    }
-  }
-
-  async function initWebSocket() {
-    const serverURL = await getServerURL();
-    if (!serverURL) return;
-
-    ws = new WebSocket(serverURL);
-
-    ws.onopen = () => updateStatus('Connected');
-    ws.onclose = () => updateStatus('Disconnected');
-    ws.onerror = () => updateStatus('Error');
-
-    ws.onmessage = msg => {
-      const data = JSON.parse(msg.data);
-      if (data.type === 'login') {
-        if (data.success) {
-          document.getElementById('loginDiv').style.display = 'none';
-          document.getElementById('chatDiv').style.display = 'flex';
-        } else {
-          document.getElementById('loginStatus').innerText = 'Login failed';
-        }
+  ws.onmessage = msg => {
+    const data = JSON.parse(msg.data);
+    if (data.type === 'login') {
+      if (data.success) {
+        document.getElementById('loginDiv').style.display = 'none';
+        document.getElementById('chatDiv').style.display = 'block';
+      } else {
+        document.getElementById('loginStatus').innerText = 'Login failed';
       }
-      if (data.type === 'message') {
-        const messagesDiv = document.getElementById('messages');
-        messagesDiv.innerHTML += `<div><b>${data.user}:</b> ${data.text}</div>`;
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-      }
-    };
-  }
+    }
+    if (data.type === 'message') {
+      const messagesDiv = document.getElementById('messages');
+      messagesDiv.innerHTML += `<div><b>${data.user}:</b> ${data.text}</div>`;
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+  };
+  return ws;
+}
 
-  function updateStatus(text) {
-    document.getElementById('status').innerText = text;
-    document.getElementById('statusChat').innerText = text;
-  }
+function updateStatus(text) {
+  document.getElementById('status').innerText = text;
+  document.getElementById('statusChat').innerText = text;
+}
 
-  function login() {
-    username = document.getElementById('chat-username').value;
-    const password = document.getElementById('chat-password').value;
-    if (!username || !password) return alert('Enter username and password');
-    if (!ws) initWebSocket().then(() => {
-      ws.send(JSON.stringify({ type: 'login', username, password }));
-    });
-    else ws.send(JSON.stringify({ type: 'login', username, password }));
-  }
+function login() {
+  username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  if (!username || !password) return alert('Enter username and password');
 
-  document.getElementById('loginBtn').addEventListener('click', login);
-  document.getElementById('sendBtn').addEventListener('click', () => {
-    const text = document.getElementById('msgInput').value.trim();
-    if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({ type: 'message', text }));
-    document.getElementById('msgInput').value = '';
+  initWebSocket().then(() => {
+    ws.send(JSON.stringify({ type: 'login', username, password }));
   });
+}
+
+// Event listeners
+document.getElementById('loginBtn').addEventListener('click', login);
+document.getElementById('loginBtn').addEventListener('touchend', login);
+
+document.getElementById('sendBtn').addEventListener('click', () => {
+  const text = document.getElementById('msgInput').value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ type: 'message', text }));
+  document.getElementById('msgInput').value = '';
+});
+document.getElementById('sendBtn').addEventListener('touchend', () => {
+  document.getElementById('sendBtn').click();
+});
 </script>
+
 </body>
 </html>
