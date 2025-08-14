@@ -26,61 +26,20 @@
       background-color: #f0f0f0;
     }
 
-    #login-container {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    #login-container input {
-      padding: 10px;
-      margin: 5px;
-      font-size: 16px;
-    }
-
-    #login-container button {
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
     iframe {
       width: 100vw;
       height: 100vh;
       border: none;
-      display: none;
     }
   </style>
 </head>
 
 <body>
-  <div id="login-container">
-    <h2>Login to VeryHardAlgebra</h2>
-    <input type="password" id="password" placeholder="Enter password">
-    <button onclick="checkPassword()">Login</button>
-    <p id="error-message" style="color: red;"></p>
-  </div>
-
   <iframe id="content-frame" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
 
   <script>
     const RAW_URL = 'https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/Curtains.html';
     const iframe = document.getElementById('content-frame');
-    const loginContainer = document.getElementById('login-container');
-    const errorMessage = document.getElementById('error-message');
-
-    function checkPassword() {
-      const input = document.getElementById('password').value;
-      if (input === 'SabrinaC') {
-        loginContainer.style.display = 'none';
-        iframe.style.display = 'block';
-        loadContent();
-      } else {
-        errorMessage.textContent = 'Incorrect password. Please try again.';
-      }
-    }
 
     // IndexedDB helpers
     function openDatabase() {
@@ -138,6 +97,8 @@
         }
       }
     }
+
+    loadContent();
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
