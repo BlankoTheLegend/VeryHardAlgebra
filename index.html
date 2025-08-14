@@ -1,162 +1,185 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VeryHardAlgebra + Chat</title>
-<style>
-  body { font-family: Arial, sans-serif; margin:0; padding:0; height:100vh; display:flex; flex-direction:column; }
-  #masterLogin, #optionLogin, #chatDiv { max-width: 500px; margin:auto; width:100%; }
-  input, button { width: 100%; margin:5px 0; padding:10px; box-sizing:border-box; }
-  #content-frame { width:100%; flex:1; border:none; display:none; }
-  /* Chat styles */
-  #messages { flex:1; border:1px solid #ccc; padding:10px; overflow-y:auto; background:#f9f9f9; display:flex; flex-direction:column; }
-  .message { margin:5px; padding:10px; border-radius:10px; max-width:70%; word-wrap:break-word; }
-  .self { align-self:flex-end; background:#dcf8c6; }
-  .other { align-self:flex-start; background:#fff; border:1px solid #ccc; }
-  #chatContainer { display:flex; flex-direction:column; height:70vh; max-width:500px; margin:auto; }
-</style>
+  <meta charset="UTF-8">
+  <title>VeryHardAlgebra</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- PWA install support -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="apple-touch-icon" sizes="76x76" href="/apple-touch-icon-76x76.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon-120x120.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152x152.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      font-family: sans-serif;
+      background-color: #f0f0f0;
+    }
+
+    #login-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background-color: #f8f8f8;
+    }
+
+    #login-form {
+      padding: 20px;
+      border: 1px solid #ccc;
+      background: white;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      border-radius: 8px;
+    }
+
+    #login-form input {
+      margin: 10px 0;
+      padding: 10px;
+      width: 200px;
+    }
+
+    #login-form button {
+      padding: 10px 20px;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    iframe {
+      display: none;
+      width: 100vw;
+      height: 100vh;
+      border: none;
+    }
+  </style>
 </head>
+
 <body>
-
-<!-- Master Password Login -->
-<div id="masterLogin">
-  <h2>Enter Master Password</h2>
-  <input type="password" id="masterPassword" placeholder="Master Password">
-  <button onclick="checkMaster()">Login</button>
-  <p id="masterError" style="color:red;"></p>
-</div>
-
-<!-- Option Login -->
-<div id="optionLogin" style="display:none;">
-  <h2>Choose Your Destination</h2>
-  <button onclick="goToCurtains()">Curtains App</button>
-  <button onclick="showChatLogin()">Messaging App</button>
-</div>
-
-<!-- Chat Login -->
-<div id="chatDiv" style="display:none;">
-  <div id="loginDiv">
-    <h2>Login</h2>
-    <input type="text" id="username" placeholder="Username">
-    <input type="password" id="password" placeholder="Password">
-    <button id="loginBtn">Login</button>
-    <p id="loginStatus"></p>
-    <p id="status">Disconnected</p>
+  <div id="login-container">
+    <form id="login-form">
+      <h2>Login Required</h2>
+      <input type="text" id="username" placeholder="Username" required><br>
+      <input type="password" id="password" placeholder="Password" required><br>
+      <button type="submit">Login</button>
+      <p id="login-status" style="color:red;"></p>
+    </form>
   </div>
 
-  <div id="chatContainer" style="display:none;">
-    <div id="messages"></div>
-    <input type="text" id="msgInput" placeholder="Type a message">
-    <button id="sendBtn">Send</button>
-    <p id="statusChat">Disconnected</p>
-  </div>
-</div>
+  <iframe id="content-frame" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
 
-<!-- Curtains iframe -->
-<iframe id="content-frame" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
+  <script>
+    const LOGIN_URL = 'https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/indicators.json';
+    const RAW_URL = 'https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/Curtains.html';
+    const iframe = document.getElementById('content-frame');
+    const loginForm = document.getElementById('login-form');
+    const loginStatus = document.getElementById('login-status');
 
-<script>
-let ws = null;
-let username = null;
+    // IndexedDB helpers
+    function openDatabase() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open('VeryHardAlgebraDB', 1);
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          db.createObjectStore('htmlCache');
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
 
-// --- Master Password ---
-function checkMaster() {
-  const input = document.getElementById('masterPassword').value;
-  if(input === 'Zahir') {
-    document.getElementById('masterLogin').style.display='none';
-    document.getElementById('optionLogin').style.display='block';
-  } else {
-    document.getElementById('masterError').textContent='Incorrect password';
-  }
-}
+    function saveHtmlToDB(html) {
+      return openDatabase().then(db => {
+        const tx = db.transaction('htmlCache', 'readwrite');
+        tx.objectStore('htmlCache').put(html, 'Curtains');
+        return tx.complete || new Promise(res => tx.oncomplete = res);
+      });
+    }
 
-// --- Option buttons ---
-function goToCurtains() {
-  document.getElementById('optionLogin').style.display='none';
-  const iframe = document.getElementById('content-frame');
-  iframe.style.display='block';
-  iframe.src = 'Curtains.html';
-}
+    function loadHtmlFromDB() {
+      return openDatabase().then(db => {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('htmlCache', 'readonly');
+          const req = tx.objectStore('htmlCache').get('Curtains');
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      });
+    }
 
-function showChatLogin() {
-  document.getElementById('optionLogin').style.display='none';
-  document.getElementById('chatDiv').style.display='block';
-}
+    // Auto-login if already authenticated
+    if (localStorage.getItem('isLoggedIn') === 'true') {
+      document.getElementById('login-container').style.display = 'none';
+      iframe.style.display = 'block';
+      loadContent();
+    }
 
-// --- Chat ---
-async function getServerURL() {
-  try {
-    const res = await fetch('https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/Key.txt');
-    return (await res.text()).trim();
-  } catch(e) {
-    alert('Failed to fetch chat server URL');
-  }
-}
+    loginForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
 
-async function initWebSocket() {
-  if(ws) return;
-  const serverURL = await getServerURL();
-  if(!serverURL) return;
-  ws = new WebSocket(serverURL);
+      try {
+        const res = await fetch(LOGIN_URL, { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to fetch credentials');
+        const data = await res.json();
 
-  ws.onopen = () => updateStatus('Connected');
-  ws.onclose = () => updateStatus('Disconnected');
-  ws.onerror = () => updateStatus('Error');
+        const user = data.users.find(u => u.username === username && u.password === password);
 
-  ws.onmessage = msg => {
-    const data = JSON.parse(msg.data);
-    if(data.type==='login') {
-      if(data.success){
-        document.getElementById('loginDiv').style.display='none';
-        document.getElementById('chatContainer').style.display='flex';
-      } else {
-        document.getElementById('loginStatus').innerText='Login failed';
+        if (user) {
+          localStorage.setItem('isLoggedIn', 'true');
+          document.getElementById('login-container').style.display = 'none';
+          iframe.style.display = 'block';
+          loadContent();
+        } else {
+          loginStatus.textContent = 'Invalid username or password.';
+        }
+      } catch (err) {
+        loginStatus.textContent = 'Error loading credentials.';
+        console.error(err);
+      }
+    });
+
+    async function loadContent() {
+      try {
+        const response = await fetch(RAW_URL, { cache: 'no-store' });
+        if (!response.ok) throw new Error('Fetch failed');
+        const html = await response.text();
+        await saveHtmlToDB(html);
+        iframe.srcdoc = html;
+        console.log('✅ Loaded fresh from GitHub and saved to IndexedDB');
+      } catch (err) {
+        console.warn('⚠️ Could not fetch latest. Trying IndexedDB...');
+        try {
+          const cached = await loadHtmlFromDB();
+          if (cached) {
+            iframe.srcdoc = cached;
+            console.log('✅ Loaded from IndexedDB (offline mode)');
+          } else {
+            throw new Error('No content in IndexedDB');
+          }
+        } catch (err2) {
+          console.warn('❌ IndexedDB failed or empty. Using fallback.');
+          iframe.src = '/fallback.html';
+        }
       }
     }
-    if(data.type==='message') {
-      addMessage(data.user, data.text, data.user===username);
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(() => console.log('🛡️ Service worker registered'))
+        .catch(err => console.error('❌ SW registration failed:', err));
     }
-  };
-}
-
-function updateStatus(text){
-  document.getElementById('status').innerText=text;
-  document.getElementById('statusChat').innerText=text;
-}
-
-function login() {
-  username = document.getElementById('username').value;
-  const password = document.getElementById('password').value;
-  if(!username || !password) return alert('Enter username and password');
-  if(!ws) initWebSocket().then(()=> ws.send(JSON.stringify({type:'login',username,password})));
-  else ws.send(JSON.stringify({type:'login',username,password}));
-}
-
-function addMessage(user,text,self=false){
-  const messagesDiv = document.getElementById('messages');
-  const msgDiv = document.createElement('div');
-  msgDiv.className = 'message ' + (self?'self':'other');
-  msgDiv.textContent = `${self?'':user+': '}${text}`;
-  messagesDiv.appendChild(msgDiv);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
-
-// --- Event listeners ---
-document.getElementById('loginBtn').addEventListener('click', login);
-document.getElementById('loginBtn').addEventListener('touchend', login);
-
-function sendMessage(){
-  const text = document.getElementById('msgInput').value.trim();
-  if(!text || !ws || ws.readyState!==WebSocket.OPEN) return;
-  ws.send(JSON.stringify({type:'message', text}));
-  document.getElementById('msgInput').value='';
-}
-
-// Event listeners
-const sendBtn = document.getElementById('sendBtn');
-sendBtn.addEventListener('click', sendMessage);
-sendBtn.addEventListener('touchend', e => { e.preventDefault(); sendMessage(); });
-</script>
+  </script>
 </body>
 </html>
