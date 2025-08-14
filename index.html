@@ -5,42 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VeryHardAlgebra Hub</title>
 <style>
-body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-#hubDiv, #chatDiv, #curtainsDiv { max-width: 600px; margin: auto; display: none; }
-#messages { border: 1px solid #ccc; height: 300px; overflow-y: scroll; padding: 10px; background: #f9f9f9; }
-input, button { width: 100%; margin: 5px 0; padding: 10px; box-sizing: border-box; }
-#status, #statusChat { margin-bottom: 10px; }
-iframe { width: 100%; height: 80vh; border: none; }
+body { margin:0; padding:0; font-family: Arial, sans-serif; }
+#loginDiv, #choiceDiv, #chatDiv, #curtainsDiv { display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; background:#f0f0f0; justify-content:center; align-items:center; flex-direction:column; }
+#loginDiv, #choiceDiv { display:flex; }
+input, button { width: 100%; margin: 5px 0; padding: 10px; box-sizing: border-box; font-size:16px; }
+#messages { border:1px solid #ccc; height:300px; overflow-y:scroll; padding:10px; background:#f9f9f9; width:90%; max-width:500px; }
+iframe { width:100%; height:100%; border:none; }
+#status, #statusChat, #loginStatus { margin-bottom:10px; }
 </style>
 </head>
 <body>
 
-<!-- Master password login -->
-<div id="loginMasterDiv">
-  <h2>Login to VeryHardAlgebra</h2>
-  <input type="password" id="masterPassword" placeholder="Enter master password">
+<!-- Master Login -->
+<div id="loginDiv">
+  <h2>Enter Master Password</h2>
+  <input type="password" id="masterPassword" placeholder="Password">
   <button id="masterLoginBtn">Login</button>
-  <p id="errorMessage" style="color:red;"></p>
+  <p id="masterError" style="color:red;"></p>
 </div>
 
-<!-- Hub menu -->
-<div id="hubDiv">
-  <h2>Welcome!</h2>
+<!-- Choice between Curtains or Chat -->
+<div id="choiceDiv">
+  <h2>Welcome! Choose an option:</h2>
   <button id="openCurtainsBtn">Open Curtains</button>
   <button id="openChatBtn">Open Chat App</button>
 </div>
 
 <!-- Chat App -->
 <div id="chatDiv">
-  <div id="loginDiv">
-    <h2>Login to Chat</h2>
+  <div id="loginDivChat">
+    <h2>Login</h2>
     <input type="text" id="username" placeholder="Username">
     <input type="password" id="password" placeholder="Password">
     <button id="loginBtn">Login</button>
     <p id="loginStatus"></p>
     <p id="status">Disconnected</p>
   </div>
-  <div id="chatContentDiv" style="display:none;">
+  <div id="chatBox" style="display:none; flex-direction:column; align-items:center;">
     <h2>Chat</h2>
     <div id="messages"></div>
     <input type="text" id="msgInput" placeholder="Type a message">
@@ -49,46 +50,50 @@ iframe { width: 100%; height: 80vh; border: none; }
   </div>
 </div>
 
-<!-- Curtains App -->
-<div id="curtainsDiv" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999;">
-  <iframe id="curtainsFrame" sandbox="allow-scripts allow-forms allow-same-origin" style="width:100%; height:100%; border:none;"></iframe>
+<!-- Curtains -->
+<div id="curtainsDiv">
+  <iframe id="curtainsFrame" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
 </div>
 
 <script>
-// ---------------- Master Password Login ----------------
+// --- Master Password ---
 const masterLoginBtn = document.getElementById('masterLoginBtn');
-const loginMasterDiv = document.getElementById('loginMasterDiv');
-const hubDiv = document.getElementById('hubDiv');
-const errorMessage = document.getElementById('errorMessage');
+const masterPasswordInput = document.getElementById('masterPassword');
+const masterError = document.getElementById('masterError');
 
 masterLoginBtn.addEventListener('click', () => {
-  const pwd = document.getElementById('masterPassword').value;
-  if (pwd === 'Zahir') {
-    loginMasterDiv.style.display = 'none';
-    hubDiv.style.display = 'block';
+  if (masterPasswordInput.value === 'SabrinaC') {
+    document.getElementById('loginDiv').style.display = 'none';
+    document.getElementById('choiceDiv').style.display = 'flex';
   } else {
-    errorMessage.textContent = 'Incorrect password. Please try again.';
+    masterError.textContent = 'Incorrect password';
   }
 });
 
-// ---------------- Hub Buttons ----------------
-const openChatBtn = document.getElementById('openChatBtn');
-const openCurtainsBtn = document.getElementById('openCurtainsBtn');
-const chatDiv = document.getElementById('chatDiv');
-const curtainsDiv = document.getElementById('curtainsDiv');
-
-openChatBtn.addEventListener('click', () => {
-  hubDiv.style.display = 'none';
-  chatDiv.style.display = 'block';
-});
-
-openCurtainsBtn.addEventListener('click', () => {
-  hubDiv.style.display = 'none';
-  curtainsDiv.style.display = 'block';
+// --- Choice Buttons ---
+document.getElementById('openCurtainsBtn').addEventListener('click', () => {
+  document.getElementById('choiceDiv').style.display = 'none';
+  document.getElementById('curtainsDiv').style.display = 'flex';
   loadCurtains();
 });
 
-// ---------------- Chat App ----------------
+document.getElementById('openChatBtn').addEventListener('click', () => {
+  document.getElementById('choiceDiv').style.display = 'none';
+  document.getElementById('chatDiv').style.display = 'flex';
+});
+
+// --- Curtains ---
+function loadCurtains() {
+  const RAW_URL = 'https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/Curtains.html';
+  fetch(RAW_URL)
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById('curtainsFrame').srcdoc = html;
+    })
+    .catch(() => alert('Failed to load Curtains'));
+}
+
+// --- Chat App ---
 let ws = null;
 let username = null;
 
@@ -102,21 +107,21 @@ async function getServerURL() {
 }
 
 async function initWebSocket() {
-  if (ws && ws.readyState === WebSocket.OPEN) return;
+  if (ws) return;
   const serverURL = await getServerURL();
   if (!serverURL) return;
-
   ws = new WebSocket(serverURL);
-  ws.onopen = () => updateStatus('Connected');
-  ws.onclose = () => updateStatus('Disconnected');
-  ws.onerror = () => updateStatus('Error');
+
+  ws.onopen = () => { updateStatus('Connected'); };
+  ws.onclose = () => { updateStatus('Disconnected'); };
+  ws.onerror = () => { updateStatus('Error'); };
 
   ws.onmessage = msg => {
     const data = JSON.parse(msg.data);
     if (data.type === 'login') {
       if (data.success) {
-        document.getElementById('loginDiv').style.display = 'none';
-        document.getElementById('chatContentDiv').style.display = 'block';
+        document.getElementById('loginDivChat').style.display = 'none';
+        document.getElementById('chatBox').style.display = 'flex';
       } else {
         document.getElementById('loginStatus').innerText = 'Login failed';
       }
@@ -127,7 +132,7 @@ async function initWebSocket() {
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
   };
-}
+};
 
 function updateStatus(text) {
   document.getElementById('status').innerText = text;
@@ -139,77 +144,23 @@ function login() {
   const password = document.getElementById('password').value;
   if (!username || !password) return alert('Enter username and password');
   initWebSocket().then(() => {
-    ws.send(JSON.stringify({ type: 'login', username, password }));
+    ws.send(JSON.stringify({ type:'login', username, password }));
   });
 }
 
 document.getElementById('loginBtn').addEventListener('click', login);
 document.getElementById('loginBtn').addEventListener('touchend', login);
+
 document.getElementById('sendBtn').addEventListener('click', () => {
   const text = document.getElementById('msgInput').value.trim();
   if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-  ws.send(JSON.stringify({ type: 'message', text }));
+  ws.send(JSON.stringify({ type:'message', text }));
   document.getElementById('msgInput').value = '';
 });
 document.getElementById('sendBtn').addEventListener('touchend', () => {
   document.getElementById('sendBtn').click();
 });
-
-// ---------------- Curtains Loader ----------------
-const curtainsFrame = document.getElementById('curtainsFrame');
-
-async function loadCurtains() {
-  const RAW_URL = 'https://raw.githubusercontent.com/BlankoTheLegend/VeryHardAlgebra/refs/heads/main/Curtains.html';
-
-  function openDatabase() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open('VeryHardAlgebraDB', 1);
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains('htmlCache')) db.createObjectStore('htmlCache');
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  function saveHtmlToDB(html) {
-    return openDatabase().then(db => {
-      const tx = db.transaction('htmlCache', 'readwrite');
-      tx.objectStore('htmlCache').put(html, 'Curtains');
-      return tx.complete || new Promise(res => tx.oncomplete = res);
-    });
-  }
-
-  function loadHtmlFromDB() {
-    return openDatabase().then(db => {
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction('htmlCache', 'readonly');
-        const req = tx.objectStore('htmlCache').get('Curtains');
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
-    });
-  }
-
-  try {
-    const response = await fetch(RAW_URL, { cache: 'no-store' });
-    if (!response.ok) throw new Error('Fetch failed');
-    const html = await response.text();
-    await saveHtmlToDB(html);
-    curtainsFrame.srcdoc = html;
-    console.log('Loaded Curtains from GitHub');
-  } catch (err) {
-    console.warn('Fetch failed, trying IndexedDB...');
-    try {
-      const cached = await loadHtmlFromDB();
-      if (cached) curtainsFrame.srcdoc = cached;
-      else throw new Error('No cached Curtains found');
-    } catch {
-      curtainsFrame.src = '/fallback.html';
-    }
-  }
-}
 </script>
+
 </body>
 </html>
