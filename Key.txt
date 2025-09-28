@@ -1,1 +1,1 @@
-https://27fdddbbc5ff.ngrok-free.app
+http://192.168.86.29:3000
